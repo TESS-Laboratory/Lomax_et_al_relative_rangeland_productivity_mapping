@@ -107,10 +107,10 @@ tss_gpp <- (actual_gpp_mean - mean_gpp_value) ^ 2 %>%
 
 # RUE
 
-median_rue <- median(values(rue_mean), na.rm = T)
+# median_rue <- median(values(rue_mean), na.rm = T)
 mean_rue <- mean(values(rue_mean), na.rm = T)
 
-predicted_gpp_rue <- median_rue * mean(ppt_all)
+predicted_gpp_rue <- mean_rue * mean(ppt_all)
 
 abs_error_rue <- abs(actual_gpp_mean - predicted_gpp_rue)
 
@@ -124,20 +124,21 @@ rsq_rue <- 1 - (rss_gpp_rue / tss_gpp)
 
 # LGS
 
-gt_weight <- 5
-lte_weight <- 5 / 9
+# gt_weight <- 5
+# lte_weight <- 5 / 9
+# 
+# error_lgs <- actual_gpp_mean - lgs_1000$potential
+# 
+# weighted_abs_error_lgs <- ifel(error_lgs > 0,
+#                                error_lgs * gt_weight,
+#                                error_lgs * lte_weight) %>%
+#   abs()
 
-error_lgs <- actual_gpp_mean - lgs_1000$potential
+abs_error_lgs <- abs(actual_gpp_mean - lgs_1000$mean)
 
-weighted_abs_error_lgs <- ifel(error_lgs > 0,
-                               error_lgs * gt_weight,
-                               error_lgs * lte_weight) %>%
-  abs()
+# maew_lgs <- mean(values(weighted_abs_error_lgs), na.rm = T)
 
-maew_lgs <- mean(values(weighted_abs_error_lgs), na.rm = T)
-
-mae_lgs <- mean(values(abs(actual_gpp_mean - lgs_1000$mean)), na.rm = T)
-
+mae_lgs <- mean(values(abs_error_lgs), na.rm = T)
 
 rss_gpp_lgs <- (actual_gpp_mean - lgs_1000$mean) ^ 2 %>%
   values() %>%
@@ -147,14 +148,14 @@ rsq_lgs <- 1 - (rss_gpp_lgs / tss_gpp)
 
 # RPI
 
-error_rpi <- actual_gpp_mean - potential_gpp_mean
-
-weighted_abs_error_rpi <- ifel(error_rpi > 0,
-                               error_rpi * gt_weight,
-                               error_rpi * lte_weight) %>%
-  abs()
-
-maew_rpi <- mean(values(weighted_abs_error_rpi), na.rm = T)
+# error_rpi <- actual_gpp_mean - potential_gpp_mean
+# 
+# weighted_abs_error_rpi <- ifel(error_rpi > 0,
+#                                error_rpi * gt_weight,
+#                                error_rpi * lte_weight) %>%
+#   abs()
+# 
+# maew_rpi <- mean(values(weighted_abs_error_rpi), na.rm = T)
 
 mae_rpi <- mean(values(abs(actual_gpp_mean - predicted_gpp_rpi)), na.rm = T)
 
@@ -168,21 +169,35 @@ rsq_rpi <- 1 - (rss_gpp_rpi / tss_gpp)
 
 
 
-
-
-First, we can simply plot comparative maps of the results from the different
+Plot comparative maps of the results from the different
 methods, starting with those that allow spatial comparison of mean degradation
 or productivity.
 
 ```{r spatial_comparison_maps}
 
+# Create new bbox to allow space for legend
+
+map_bbox <- st_bbox(ke_tz)
+
+xrange <- map_bbox$xmax - map_bbox$xmin
+yrange <- map_bbox$ymax - map_bbox$ymin
+
+map_bbox[1] <- map_bbox[1] - 0.25 * xrange
+
 # Basemap elements
-fill <- tm_shape(ke_tz) +
+fill <- tm_shape(ke_tz, bbox = map_bbox) +
   tm_fill("grey95")
 
 borders <- tm_shape(ke_tz) +
   tm_borders() +
   tm_layout(frame = FALSE)
+
+zoom_box <- st_bbox(c(xmin = 38, xmax = 40, ymin = -0.5, ymax = 1.5)) %>%
+  st_as_sfc(crs = "EPSG:4326") %>%
+  st_as_sf()
+
+zoom_borders <- tm_shape(zoom_box) +
+  tm_borders(col = "red", lwd = 1.5)
 
 # Raw maps of mean values
 rpi_mean_map <- fill +
@@ -190,90 +205,105 @@ rpi_mean_map <- fill +
   tm_raster(
     col.scale = tm_scale_continuous(
       limits = c(0.3, 1),
-      values = "YlGnBu",
+      values = "-viridis",
       outliers.trunc = c(T,T)
     ),
     col.legend = tm_legend(
-      title = "Mean RPI",
+      title = "",
       reverse = TRUE,
-      frame = FALSE)
+      frame = FALSE,
+      position = c("left", "top")
+    )
   ) +
   tm_layout(asp = 3/4,
             frame = FALSE) +
   tm_title("a) RPI") +
-  borders
+  borders +
+  zoom_borders
 
 rue_mean_map <- fill +
   tm_shape(rue_mean) +
   tm_raster(
     col.scale = tm_scale_continuous(
       limits = c(1, 7),
-      values = "YlGnBu",
+      values = "-viridis",
       outliers.trunc = c(T,T)
     ),
     col.legend = tm_legend(
-      title = "Mean RUE",
+      title = "",
       reverse = TRUE,
-      frame = FALSE)
+      frame = FALSE,
+      position = c("left", "top")
+    )
   ) +
   tm_layout(asp = 3/4,
             frame = FALSE) +
   tm_title("b) RUE") +
-  borders
+  borders +
+  zoom_borders
 
 lgs_100_mean_map <- fill +
   tm_shape(lgs_100$lgs_ratio) +
   tm_raster(
     col.scale = tm_scale_continuous(
-      limits = c(0.2, 1.4),
-      values = "YlGnBu",
+      limits = c(0.25, 1.25),
+      values = "-viridis",
       outliers.trunc = c(T,T)
     ),
     col.legend = tm_legend(
-      title = "LGS",
+      title = "",
       reverse = TRUE,
-      frame = FALSE)
+      frame = FALSE,
+      position = c("left", "top")
+    )
   ) +
   tm_layout(asp = 3/4,
             frame = FALSE) +
   tm_title("c) LGS, k = 100") +
-  borders
+  borders +
+  zoom_borders
 
 lgs_200_mean_map <- fill +
   tm_shape(lgs_200$lgs_ratio) +
   tm_raster(
     col.scale = tm_scale_continuous(
-      limits = c(0.2, 1.4),
-      values = "YlGnBu",
+      limits = c(0.25, 1.25),
+      values = "-viridis",
       outliers.trunc = c(T,T)
     ),
     col.legend = tm_legend(
-      title = "LGS",
+      title = "",
       reverse = TRUE,
-      frame = FALSE)
+      frame = FALSE,
+      position = c("left", "top")
+    )
   ) +
   tm_layout(asp = 3/4,
             frame = FALSE) +
   tm_title("d) LGS, k = 200") +
-  borders
+  borders +
+  zoom_borders
 
 lgs_1000_mean_map <- fill +
   tm_shape(lgs_1000$lgs_ratio) +
   tm_raster(
     col.scale = tm_scale_continuous(
-      limits = c(0.2, 1.4),
-      values = "YlGnBu",
+      limits = c(0.25, 1.25),
+      values = "-viridis",
       outliers.trunc = c(T,T)
     ),
     col.legend = tm_legend(
-      title = "LGS",
+      title = "",
       reverse = TRUE,
-      frame = FALSE)
+      frame = FALSE,
+      position = c("left", "top")
+    )
   ) +
   tm_layout(asp = 3/4,
             frame = FALSE) +
   tm_title("d) LGS, k = 1000") +
-  borders
+  borders +
+  zoom_borders
 
 # Save maps
 tmap_save(rue_mean_map,
@@ -287,162 +317,330 @@ tmap_save(rpi_mean_map,
 tmap_save(lgs_100_mean_map,
           here("results", "figures", "lgs_100_mean.png"),
           width = 12, height = 12, units = "cm", dpi = 250)
-
-tmap_save(lgs_200_mean_map,
-          here("results", "figures", "lgs_200_mean.png"),
-          width = 12, height = 12, units = "cm", dpi = 250)
+# 
+# tmap_save(lgs_200_mean_map,
+#           here("results", "figures", "lgs_200_mean.png"),
+#           width = 12, height = 12, units = "cm", dpi = 250)
 
 tmap_save(lgs_1000_mean_map,
           here("results", "figures", "lgs_1000_mean.png"),
           width = 12, height = 12, units = "cm", dpi = 250)
 
-# Potential GPP maps for RPI and LGS
-rpi_potential_map <- fill +
-  tm_shape(potential_gpp_mean) +
+## The same maps zoomed in to a specific region
+
+zoom_raster <- c(rue_mean, rpi_mean, lgs_100$lgs_ratio, lgs_1000$lgs_ratio)
+names(zoom_raster) <- c("rue", "rpi", "lgs_100", "lgs_1000")
+
+zoom_raster <- crop(zoom_raster, zoom_box)
+
+zoom_rue <- tm_shape(zoom_raster$rue) + 
   tm_raster(
     col.scale = tm_scale_continuous(
-      limits = c(750, 5250),
-      midpoint = 3000,
-      values = "YlGn",
-      outliers.trunc = c(TRUE, TRUE)
+      limits = c(1, 7),
+      values = "-viridis",
+      outliers.trunc = c(T,T)
     ),
     col.legend = tm_legend(
-      reverse = TRUE,
-      title = expression(
-        atop("Potential GPP",
-             kg~C~m^-2~y^-1)
-      ),
-      frame = FALSE
+      show = FALSE
     )
   ) +
-  borders +
+  tm_shape(zoom_box) + tm_borders(col = "red", lwd = 2) +
   tm_layout(asp = 3/4,
             frame = FALSE) +
-  tm_title("RPI")
+  tm_scalebar()
 
-lgs_100_potential_map <- fill +
-  tm_shape(lgs_100$potential) +
+zoom_rpi <- tm_shape(zoom_raster$rpi) + 
   tm_raster(
     col.scale = tm_scale_continuous(
-      limits = c(750, 5250),
-      midpoint = 3000,
-      values = "YlGn",
-      outliers.trunc = c(TRUE, TRUE)
+      limits = c(0.3, 1),
+      values = "-viridis",
+      outliers.trunc = c(T,T)
     ),
     col.legend = tm_legend(
-      reverse = TRUE,
-      title = expression(
-        atop("Potential GPP",
-             kg~C~m^-2~y^-1)
-      ),
-      frame = FALSE
+      show = FALSE
     )
   ) +
-  borders +
+  tm_shape(zoom_box) + tm_borders(col = "red", lwd = 2) +
   tm_layout(asp = 3/4,
             frame = FALSE) +
-  tm_title("LGS, k = 100")
+  tm_scalebar()
 
-lgs_1000_potential_map <- fill +
-  tm_shape(lgs_1000$potential) +
+zoom_lgs_100 <- tm_shape(zoom_raster$lgs_100) + 
   tm_raster(
     col.scale = tm_scale_continuous(
-      limits = c(750, 5250),
-      midpoint = 3000,
-      values = "YlGn",
-      outliers.trunc = c(TRUE, TRUE)
+      limits = c(0.25, 1.25),
+      values = "-viridis",
+      outliers.trunc = c(T,T)
     ),
     col.legend = tm_legend(
-      reverse = TRUE,
-      title = expression(
-        atop("Potential GPP",
-             kg~C~m^-2~y^-1)
-      ),
-      frame = FALSE
+      show = FALSE
     )
   ) +
-  borders +
+  tm_shape(zoom_box) + tm_borders(col = "red", lwd = 2) +
   tm_layout(asp = 3/4,
             frame = FALSE) +
-  tm_title("LGS, k = 1000")
+  tm_scalebar()
 
+zoom_lgs_1000 <- tm_shape(zoom_raster$lgs_1000) + 
+  tm_raster(
+    col.scale = tm_scale_continuous(
+      limits = c(0.25, 1.25),
+      values = "-viridis",
+      outliers.trunc = c(T,T)
+    ),
+    col.legend = tm_legend(
+      show = FALSE
+    )
+  ) +
+  tm_shape(zoom_box) + tm_borders(col = "red", lwd = 2) +
+  tm_layout(asp = 3/4,
+            frame = FALSE) +
+  tm_scalebar()
 
-tmap_save(rpi_potential_map,
-          here("results", "figures", "rpi_potential_map.png"),
+tmap_save(zoom_rpi,
+          here("results", "figures", "zoom_rpi.png"),
           width = 12, height = 12, units = "cm", dpi = 250)
 
-tmap_save(lgs_100_potential_map,
-          here("results", "figures", "lgs_100_potential_map.png"),
+tmap_save(zoom_rue,
+          here("results", "figures", "zoom_rue.png"),
           width = 12, height = 12, units = "cm", dpi = 250)
 
-tmap_save(lgs_1000_potential_map,
-          here("results", "figures", "lgs_1000_potential_map.png"),
+tmap_save(zoom_lgs_100,
+          here("results", "figures", "zoom_lgs_100.png"),
           width = 12, height = 12, units = "cm", dpi = 250)
 
-rpi_mean_map
-rue_mean_map
-lgs_mean_map
-
-# ## Comparative map of RPI vs. LGS (scaled relative to median and 0.1/0.9 quantiles)
-# 
-# # Calculate median and quartiles for each index
-# rpi_quantiles <- quantile(values(rpi_mean), c(0.5, 0.25, 0.75), na.rm = TRUE)
-# rue_quantiles <- quantile(values(rue_mean), c(0.5, 0.25, 0.75), na.rm = TRUE)
-# lgs_quantiles <- quantile(values(lgs_100$lgs_ratio), c(0.5, 0.25, 0.75), na.rm = TRUE)
-# 
-# # Centre values around median and scale by interquartile range
-# rpi_mean_scaled <- (rpi_mean - rpi_quantiles[1]) / (rpi_quantiles[3] - rpi_quantiles[2])
-# rue_mean_scaled <- (rue_mean - rue_quantiles[1]) / (rue_quantiles[3] - rue_quantiles[2])
-# lgs_mean_scaled <- (lgs_100$lgs_ratio - lgs_quantiles[1]) / (lgs_quantiles[3] - lgs_quantiles[2])
-# 
-# # Calculate difference maps between RPI and other indices
-# 
-# rpi_rue_diff <- rpi_mean_scaled - rue_mean_scaled
-# rpi_lgs_diff <- rpi_mean_scaled - lgs_mean_scaled
-# 
-# rpi_rue_diff_map <- fill +
-#   tm_shape(rpi_rue_diff) +
-#   tm_raster(
-#     col.scale = tm_scale_continuous(
-#       limits = c(-2, 2),
-#       midpoint = 0,
-#       values = "RdBu",
-#       outliers.trunc = c(T,T)
-#     ),
-#     
-#     col.legend = tm_legend(
-#       title = "RPI vs. RUE difference",
-#       reverse = TRUE,
-#       width = 10,
-#       height = 30
-#     )
-#   ) +
-#   borders
-# 
-# rpi_lgs_diff_map <- fill +
-#   tm_shape(rpi_lgs_diff) +
-#   tm_raster(
-#     col.scale = tm_scale_continuous(
-#       limits = c(-2, 2),
-#       midpoint = 0,
-#       values = "RdBu",
-#       outliers.trunc = c(T,T)
-#     ),
-#     
-#     col.legend = tm_legend(
-#       title = "RPI vs. LGS difference",
-#       reverse = TRUE,
-#       width = 10,
-#       height = 30
-#     )
-#   ) +
-#   borders
-# 
-# rpi_rue_diff_map
-# rpi_lgs_diff_map
+tmap_save(zoom_lgs_1000,
+          here("results", "figures", "zoom_lgs_1000.png"),
+          width = 12, height = 12, units = "cm", dpi = 250)
 
 
 ```
+
+
+Can also plot the estimated potential GPP to get a clearer picture of the model
+underlying each method:
+
+```{r potential_gpp_maps}
+
+# Create new bbox to allow space for legend
+
+map_bbox <- st_bbox(ke_tz)
+
+xrange <- map_bbox$xmax - map_bbox$xmin
+
+map_bbox[1] <- map_bbox[1] - 0.25 * xrange
+
+# Basemap elements
+fill <- tm_shape(ke_tz, bbox = map_bbox) +
+  tm_fill("grey95")
+
+borders <- tm_shape(ke_tz) +
+  tm_borders() +
+  tm_layout(frame = FALSE)
+
+zoom_box <- st_bbox(c(xmin = 38, xmax = 40, ymin = -0.5, ymax = 1.5)) %>%
+  st_as_sfc(crs = "EPSG:4326") %>%
+  st_as_sf()
+
+zoom_borders <- tm_shape(zoom_box) +
+  tm_borders(col = "red", lwd = 1.5)
+
+# Raw maps of mean values
+rpi_pgpp_map <- fill +
+  tm_shape(potential_gpp_mean) +
+  tm_raster(
+    col.scale = tm_scale_continuous(
+      limits = c(0, 5000),
+      values = "yl_gn",
+      outliers.trunc = c(T,T)
+    ),
+    col.legend = tm_legend(
+      title = "",
+      reverse = TRUE,
+      frame = FALSE,
+      position = c("left", "top")
+    )
+  ) +
+  tm_layout(asp = 3/4,
+            frame = FALSE) +
+  tm_title("a) RPI") +
+  borders +
+  zoom_borders
+
+rue_pgpp_map <- fill +
+  tm_shape(mean(rue_pred)) +
+  tm_raster(
+    col.scale = tm_scale_continuous(
+      limits = c(0, 5000),
+      values = "yl_gn",
+      outliers.trunc = c(T,T)
+    ),
+    col.legend = tm_legend(
+      title = "",
+      reverse = TRUE,
+      frame = FALSE,
+      position = c("left", "top")
+    )
+  ) +
+  tm_layout(asp = 3/4,
+            frame = FALSE) +
+  tm_title("b) RUE") +
+  borders +
+  zoom_borders
+
+lgs_100_pgpp_map <- fill +
+  tm_shape(lgs_100$potential) +
+  tm_raster(
+    col.scale = tm_scale_continuous(
+      limits = c(0, 5000),
+      values = "yl_gn",
+      outliers.trunc = c(T,T)
+    ),
+    col.legend = tm_legend(
+      title = "",
+      reverse = TRUE,
+      frame = FALSE,
+      position = c("left", "top")
+    )
+  ) +
+  tm_layout(asp = 3/4,
+            frame = FALSE) +
+  tm_title("c) LGS, k = 100") +
+  borders +
+  zoom_borders
+
+lgs_1000_pgpp_map <- fill +
+  tm_shape(lgs_1000$potential) +
+  tm_raster(
+    col.scale = tm_scale_continuous(
+      limits = c(0, 5000),
+      values = "yl_gn",
+      outliers.trunc = c(T,T)
+    ),
+    col.legend = tm_legend(
+      title = "",
+      reverse = TRUE,
+      frame = FALSE,
+      position = c("left", "top")
+    )
+  ) +
+  tm_layout(asp = 3/4,
+            frame = FALSE) +
+  tm_title("d) LGS, k = 1000") +
+  borders +
+  zoom_borders
+
+# Save maps
+tmap_save(rue_pgpp_map,
+          here("results", "figures", "rue_pgpp.png"),
+          width = 12, height = 12, units = "cm", dpi = 250)
+
+tmap_save(rpi_pgpp_map,
+          here("results", "figures", "rpi_pgpp.png"),
+          width = 12, height = 12, units = "cm", dpi = 250)
+
+tmap_save(lgs_100_pgpp_map,
+          here("results", "figures", "lgs_100_pgpp.png"),
+          width = 12, height = 12, units = "cm", dpi = 250)
+# 
+# tmap_save(lgs_200_mean_map,
+#           here("results", "figures", "lgs_200_mean.png"),
+#           width = 12, height = 12, units = "cm", dpi = 250)
+
+tmap_save(lgs_1000_pgpp_map,
+          here("results", "figures", "lgs_1000_pgpp.png"),
+          width = 12, height = 12, units = "cm", dpi = 250)
+
+## The same maps zoomed in to a specific region
+
+zoom_raster_pgpp <- c(mean(rue_pred), potential_gpp_mean, lgs_100$potential, lgs_1000$potential)
+names(zoom_raster_pgpp) <- c("rue", "rpi", "lgs_100", "lgs_1000")
+
+zoom_raster_pgpp <- crop(zoom_raster_pgpp, zoom_box)
+
+zoom_rue_pgpp <- tm_shape(zoom_raster_pgpp$rue) + 
+  tm_raster(
+    col.scale = tm_scale_continuous(
+      limits = c(0, 5000),
+      values = "yl_gn",
+      outliers.trunc = c(T,T)
+    ),
+    col.legend = tm_legend(
+      show = FALSE
+    )
+  ) +
+  tm_shape(zoom_box) + tm_borders(col = "red", lwd = 2) +
+  tm_layout(asp = 3/4,
+            frame = FALSE) +
+  tm_scalebar()
+
+zoom_rpi_pgpp <- tm_shape(zoom_raster_pgpp$rpi) + 
+  tm_raster(
+    col.scale = tm_scale_continuous(
+      limits = c(0, 5000),
+      values = "yl_gn",
+      outliers.trunc = c(T,T)
+    ),
+    col.legend = tm_legend(
+      show = FALSE
+    )
+  ) +
+  tm_shape(zoom_box) + tm_borders(col = "red", lwd = 2) +
+  tm_layout(asp = 3/4,
+            frame = FALSE) +
+  tm_scalebar()
+
+zoom_lgs_100_pgpp <- tm_shape(zoom_raster_pgpp$lgs_100) + 
+  tm_raster(
+    col.scale = tm_scale_continuous(
+      limits = c(0, 5000),
+      values = "yl_gn",
+      outliers.trunc = c(T,T)
+    ),
+    col.legend = tm_legend(
+      show = FALSE
+    )
+  ) +
+  tm_shape(zoom_box) + tm_borders(col = "red", lwd = 2) +
+  tm_layout(asp = 3/4,
+            frame = FALSE) +
+  tm_scalebar()
+
+zoom_lgs_1000_pgpp <- tm_shape(zoom_raster_pgpp$lgs_1000) + 
+  tm_raster(
+    col.scale = tm_scale_continuous(
+      limits = c(0, 5000),
+      values = "yl_gn",
+      outliers.trunc = c(T,T)
+    ),
+    col.legend = tm_legend(
+      show = FALSE
+    )
+  ) +
+  tm_shape(zoom_box) + tm_borders(col = "red", lwd = 2) +
+  tm_layout(asp = 3/4,
+            frame = FALSE) +
+  tm_scalebar()
+
+tmap_save(zoom_rpi_pgpp,
+          here("results", "figures", "zoom_rpi_pgpp.png"),
+          width = 12, height = 12, units = "cm", dpi = 250)
+
+tmap_save(zoom_rue_pgpp,
+          here("results", "figures", "zoom_rue_pgpp.png"),
+          width = 12, height = 12, units = "cm", dpi = 250)
+
+tmap_save(zoom_lgs_100_pgpp,
+          here("results", "figures", "zoom_lgs_100_pgpp.png"),
+          width = 12, height = 12, units = "cm", dpi = 250)
+
+tmap_save(zoom_lgs_1000_pgpp,
+          here("results", "figures", "zoom_lgs_1000_pgpp.png"),
+          width = 12, height = 12, units = "cm", dpi = 250)
+
+```
+
+
 
 
 A more intuitive map might be to plot the quantiles for each dataset, i.e.,
@@ -595,16 +793,5 @@ spatial_comparison %>%
 ```
 
 
-We can compare the performance of our method with those of others on various
-criteria. For mean values across space, the key issues are:
-- Explaining a greater share of spatial variation with environmental
-covariates (R-squared)
-- Reduced overall variance?
-- Consistency (lack of sharp boundaries)
-- Lack of correlation with MAP or other key vars
 
-For trend, we can assess performance through:
-- High R-squared for each pixel
-- Low mean absolute error (weighted?) for each pixel
-- Consistency in Mann-Kendall trend?
-- P-values of Theil-Sen slope or permutation trend?
+
