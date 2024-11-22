@@ -4,7 +4,8 @@ This repository contains R and Google Earth Engine code for the analysis in Loma
 
 Publication doi: 
 
-Repository doi: 
+Repository doi: [![DOI](https://zenodo.org/badge/724703367.svg)](https://doi.org/10.5281/zenodo.13987665)
+
 
 Contact: G.Lomax@exeter.ac.uk
 
