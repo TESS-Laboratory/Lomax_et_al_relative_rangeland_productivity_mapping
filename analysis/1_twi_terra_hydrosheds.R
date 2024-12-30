@@ -11,8 +11,6 @@ library(here)
 library(whitebox)
 library(raster)
 
-tmap_mode("view")
-
 # Load data and join
 
 dem <- rast(here("data", "raw", "raster", "hydroSHEDS", "hydroshedsDem.tif"))
