@@ -31,7 +31,7 @@ library(tictoc)
 library(tmap)
 
 # # Parallelisation
-nc <- availableCores() / 2
+nc <- availableCores() / 4
 plan(multisession, workers = nc)
 
 ```
@@ -44,12 +44,11 @@ ke_tz <- st_read(here("data", "raw", "vector", "kenya_tanzania.geojson"))
 # Sample point data
 sample_points_raw <- st_read(here("data", "raw", "vector", "rangelandSample.geojson"))
 
-twi <- read_csv(here("data", "processed", "csv", "twi_sample_rangeland.csv"))
-
-sample_points_ppt <- st_read(here("data", "raw", "vector", "pptDistributionSample.geojson"))
-
+twi <- read_csv(here("data", "processed", "csv", "twi_sample.csv"))
 
 ```
+
+Prepare data and add derived variables:
 
 ```{r clean, include = FALSE}
 
@@ -111,6 +110,7 @@ allow assessment of quantiles.
 
 vars_to_retain <- c(
   "index",
+  "x", "y",
   "year",
   "GPP",
   # "precipitation",  # Exclude raw precipitation data
@@ -138,6 +138,7 @@ task_gpp <- as_task_regr_st(
   x = sample_points_subset,
   id = "potential_gpp",
   target = "GPP",
+  coordinate_names = c("x", "y"),
   coords_as_features = FALSE,
   crs = "epsg:4326"
 )
