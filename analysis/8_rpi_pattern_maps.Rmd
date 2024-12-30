@@ -55,44 +55,8 @@ names(rpi_all) <- paste0("rpi_", 2000:2018)
 rpi_ts_trend <- rast(here("data", "processed", "raster", "rpi", "rf_rpi_ts_trend.tif"))
 rpi_kendall <- rast(here("data", "processed", "raster", "rpi", "rf_rpi_kendall_tau_rast.tif"))
 
-# Protected area polygons
+# Topography
 
-pas <- st_read(here("data", "raw", "vector", "protected_areas", "terrestrialPAsKeTz.geojson"))
-
-pa_keep <- c(
-  "Forest Reserve", "National Park", "National Reserve",
-  "Community Nature Reserve", "Community Conservancy", "Game Reserve",
-  "Private Ranch", "Conservancy", "Private Protected Area", "Conservation Area",
-  "Nature Reserve", "Private Nature Reserve", "Wildlife Sanctuary"
-)
-
-pa_keep_strict <- c("National Park", "National Reserve", "Community Nature Reserve",
-                    "Community Conservancy", "Conservation Area", "Wildlife Management Area")
-
-pas_filtered <- pas %>%
-  filter(DESIG_ENG %in% pa_keep_strict) %>%
-  st_collection_extract() %>%
-  mutate(area = units::set_units(st_area(geometry), "km^2"))
-
-pas_large <- filter(pas_filtered, area >= set_units(2000, "km^2"))
-
-# # Key covariates for comparison/exploration of results
-# dynamic_covariate_paths <- Sys.glob(here("data", "raw", "raster", "covariateMaps", "dynamicVars*.tif"))
-# ppt_all <- dynamic_covariate_paths %>%
-#   map(function(path) rast(path) %>% subset("precipitation")) %>%
-#   rast()
-# tMean_all <- dynamic_covariate_paths %>%
-#   map(function(path) rast(path) %>% subset("tMean")) %>%
-#   rast()
-# tree_cover <- rast(here("data", "raw", "raster", "covariateMaps", "staticVars.tif")) %>%
-#   subset("wriTCFrac") %>%
-#   crop(ppt_all)
-# 
-# years <- 2000:2018
-# names(ppt_all) <- paste0("precipitation_", years)
-# names(tMean_all) <- paste0("tMean_", years)
-
-static_covariates <- rast(here("data", "raw", "raster", "covariateMaps", "staticVars.tif"))
 elev <- rast(here("data", "raw", "raster", "covariateMaps", "dem.tif"))
 
 ```
@@ -291,11 +255,11 @@ rpi_class_map <- fill +
   # tm_title("g)") +
   borders
 
-tmap_save(rpi_mean_map, here("results", "figures", "rpi_mean_map2.png"),
+tmap_save(rpi_mean_map, here("results", "figures", "rpi_mean_map.png"),
           width = 12, height = 12, units = "cm", dpi = 300)
-tmap_save(rpi_trend_map, here("results", "figures", "rpi_trend_map2.png"),
+tmap_save(rpi_trend_map, here("results", "figures", "rpi_trend_map.png"),
           width = 12, height = 12, units = "cm", dpi = 300)
-tmap_save(rpi_class_map, here("results", "figures", "rpi_class_map2.png"),
+tmap_save(rpi_class_map, here("results", "figures", "rpi_class_map.png"),
           width = 12, height = 12, units = "cm", dpi = 300)
 
 ## Zoom-ins
@@ -309,9 +273,6 @@ rast1 <- crop(rast_combined, bb1)
 # rast2 <- crop(rast_combined, bb2)
 # rast3 <- crop(rast_combined, bb3)
 rast4 <- crop(rast_combined, bb4)
-
-# protected_areas <- tm_shape(pas_filtered) +
-#   tm_borders(col = "brown", lwd = 3)
 
 map_list <- list(list(rpi_mean_map, rpi_trend_map, rpi_class_map),
                  list(length = 3), 
@@ -360,33 +321,14 @@ for (i in 1:length(bb_list)) {
   
   map_list[[i+1]] <- list(rpi_mean_bb, rpi_trend_bb, rpi_class_bb)
   
-  # tmap_save(
-  #   rpi_mean_bb,
-  #   here("results", "figures", paste0("rpi_mean_bbx", i, ".png")),
-  #   width = 10, height = 10, units = "cm", dpi = 300
-  # )
-  # 
-  # tmap_save(
-  #   rpi_trend_bb,
-  #   here("results", "figures", paste0("rpi_trend_bbx", i, ".png")),
-  #   width = 10, height = 10, units = "cm", dpi = 300
-  # )
-  # 
-  # tmap_save(
-  #   rpi_class_bb,
-  #   here("results", "figures", paste0("rpi_class_bbx", i, ".png")),
-  #   width = 10, height = 10, units = "cm", dpi = 300
-  # )
 }
 
 tmap_list <- list_flatten(list_transpose(map_list))
 
 multi_panel_map <- tmap_arrange(tmap_list, ncol = 3, nrow = 3)
 
-tmap_save(multi_panel_map, here("results", "figures", "multi_panel_class_map2.jpg"),
+tmap_save(multi_panel_map, here("results", "figures", "multi_panel_class_map.jpg"),
           width = 26, height = 32, dpi = 300, units = "cm")
-
-
 
 ## High topography area map
 
@@ -461,41 +403,4 @@ tmap_save(hillshade_map, here("results", "figures", "hillshade_topo_map.png"),
           width = 10, height = 10, units = "cm", dpi = 300)
 
 ```
-
-Three-panel figure showing the fractional area improving/worsening and at
-different levels of mean RPI, plus the relationship between them.
-
-```{r}
-
-rpi_df <- c(mean(rpi_all, na.rm = TRUE), rpi_ts_trend$slope) %>%
-  as.data.frame(cells = TRUE) %>%
-  rename(rpi_mean = mean, rpi_trend = slope)
-
-mean_density <- ggplot(rpi_df, aes(x = rpi_mean)) +
-  geom_density(fill = "lightgreen", alpha = 0.8) +
-  geom_vline(xintercept = c(0.5, 1)) +
-  theme_bw() +
-  coord_cartesian(xlim = c(0, 2))
-
-trend_density <- ggplot(rpi_df, aes(x = rpi_trend)) +
-  geom_density(fill = "bisque3") +
-  geom_vline(xintercept = 0) +
-  theme_bw() +
-  coord_cartesian(xlim = c(-0.05, 0.05))
-
-rpi_heatmap <- ggplot(rpi_df, aes(x = rpi_mean, y = rpi_trend)) +
-  geom_hex(bins = 100) +
-  scale_fill_viridis_c(direction = 1, trans = "log", breaks = 10 ^ seq(0, 4)) +
-  coord_cartesian(xlim = c(0, 2), ylim = c(-0.2, 0.2)) +
-  geom_vline(xintercept = 1) + geom_hline(yintercept = 0) +
-  theme_bw() +
-  labs(x = "Mean RPI", y = expression("RPI trend"~(yr^-1)), fill = "Count")
-
-ggsave(here("results", "figures", "paper_figures", "RPI_mean_vs_trend_hex.png"),
-       rpi_heatmap,
-       width = 16, height = 12, units = "cm", dpi = 300)
-  
-
-```
-
 
