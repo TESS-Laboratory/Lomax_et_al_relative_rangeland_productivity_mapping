@@ -69,7 +69,7 @@ plot(twi_fd8, xlim = c(30, 30.5), ylim = c(-5, -4.5))
 # Reproject to WGS 84 lat/lon
 twi_fd8_wgs84 <- project(twi_fd8, dem)
 
-sample_points_raw <- st_read(here("data", "raw", "vector", "coarseScaleSample.geojson"))
+sample_points_raw <- st_read(here("data", "raw", "vector", "rangelandSample.geojson"))
 
 sample_points_twi <- terra::extract(twi_fd8_wgs84, sample_points_raw)
 head(sample_points_twi)
