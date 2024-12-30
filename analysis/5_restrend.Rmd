@@ -5,6 +5,11 @@ date: 2023-11-27
 author: "Guy Lomax"
 ---
 
+This notebook calculates Rain Use Efficiency (RUE) (Le Houerou 1984) and
+Residual Trend analysis (RESTREND) (Evans & Geerken 2004; Burrell et al. 2019)
+residuals for all grid cells in the study area, as well as temporal trends in
+these values, and saves them to disk.
+
 ```{r setup}
 
 # Data handling
@@ -21,9 +26,6 @@ library(furrr)
 
 # Visualisation
 library(tmap)
-
-# nc <- availableCores() / 2
-# plan(multisession, workers = nc)
 
 
 ```
@@ -70,7 +72,7 @@ names(gpp) <- paste0("gpp_", years)
 
 
 
-Calculate RESTREND on all pixels
+Calculate RUE values and trend for all pixels
 
 ```{r rue}
 
@@ -106,17 +108,17 @@ toc()
 names(rue_trend) <- c("rue_slope", "r_sq", "p_value")
 
 # Write rasters to disk
-# writeRaster(rue_mean, here("data", "processed", "raster", "rue", "rue_mean.tif"), overwrite = TRUE)
+writeRaster(rue_mean, here("data", "processed", "raster", "rue", "rue_mean.tif"), overwrite = TRUE)
 writeRaster(rue_trend, here("data", "processed", "raster", "rue", "rue_trend.tif"), overwrite = TRUE)
 
 ```
 
-Calculate RESTREND residuals and residual trend
+Calculate RESTREND residuals and residual trend for all pixels
 
 ``` {r restrend}
 
-# Function to extract model params and residuals from linear models fitted to
-# the time series in each pixel
+# Custom function to extract model params and residuals from linear models
+# fitted to the time series in each pixel
 
 fit_restrend <- function(gpp_rast, ppt_rast, tMean_rast) {
   
@@ -188,7 +190,7 @@ tictoc::toc()
 writeRaster(restrend_rast, here("data", "processed", "raster", "restrend", "restrend_resids.tif"),
             overwrite = TRUE)
 
-# Calculate residual trend
+# Calculate residual trend and save
 
 restrend_rast <- rast(here("data", "processed", "raster", "restrend", "restrend_resids.tif"))
 
@@ -220,37 +222,6 @@ names(restrend_results) <- c("resid_slope", "resid_rsq", "resid_p_value")
 
 writeRaster(restrend_results, here("data", "processed", "raster", "restrend_results.tif"),
             overwrite = TRUE)
-
-
-# RESTREND Kendall Tau
-
-calculate_restrend_kt <- function(x) {
-  if (any(is.na(x))) {
-    
-    rep(NA, 2)
-    
-  } else {
-    
-    kendall <- Kendall::MannKendall(x)
-    
-    c(kendall$tau, kendall$sl)
-    
-  }
-}
-
-
-tic()
-restrend_kendall <- app(restrend_rast[[7:25]], calculate_restrend_kt, cores = 16)
-toc()
-
-names(restrend_kendall) <- c("tau", "p_value")
-
-writeRaster(restrend_kendall, here("data", "processed", "raster", "restrend",
-                                   "restrend_kendall.tif"),
-            overwrite = TRUE)
-
-
-
 
 ```
 
