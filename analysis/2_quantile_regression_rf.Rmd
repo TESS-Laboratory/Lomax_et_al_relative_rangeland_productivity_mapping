@@ -125,7 +125,7 @@ vars_to_retain <- c(
   "index",
   "year",
   "GPP",
-  # "precipitation",
+  # "precipitation",  # Exclude raw precipitation data
   "mean_ppt",
   "ppt_anomaly",
   "meanPptDay_anomaly",
@@ -170,7 +170,7 @@ lrn_ranger_untuned <- lrn("regr.ranger",
 # Create resampling strategy
 
 spt_cv_plan <- rsmp("sptcv_cstf", folds = 10)
-# nspt_cv_plan <- rsmp("cv", folds = 10)
+# nspt_cv_plan <- rsmp("cv", folds = 10)  # Non-spatiotemporal CV (not used in main analysis)
 
 ```
 
