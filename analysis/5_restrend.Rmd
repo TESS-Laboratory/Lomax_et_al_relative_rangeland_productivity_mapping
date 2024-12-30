@@ -105,24 +105,9 @@ toc()
 
 names(rue_trend) <- c("rue_slope", "r_sq", "p_value")
 
-# # RUE trend using Mann-Kendall
-# 
-# tic()
-# rue_trend_kendall <- app(rue, function(ts) {
-#   if (any(is.na(ts))) {
-#     rep(NA, 2)
-#   } else {
-#     kendall <- Kendall::MannKendall(ts)
-#     
-#     c(kendall$tau, kendall$sl)
-#   }
-# })
-# toc()
-
 # Write rasters to disk
 # writeRaster(rue_mean, here("data", "processed", "raster", "rue", "rue_mean.tif"), overwrite = TRUE)
 writeRaster(rue_trend, here("data", "processed", "raster", "rue", "rue_trend.tif"), overwrite = TRUE)
-# writeRaster(rue_trend_kendall, here("data", "processed", "raster", "rue", "rue_trend_kendall.tif"), overwrite = TRUE)
 
 ```
 
@@ -167,18 +152,19 @@ fit_restrend <- function(gpp_rast, ppt_rast, tMean_rast) {
 
     resids <- residuals(model)
     
-    output <- c(yint, ppt_slope, t_slope, r_sq, ppt_p_value, t_p_value, resids)
-    
-    if (length(output) == 25) {
-      names(output) <- c("yint", "ppt_slope", "t_slope",
-                         "rsq", "ppt_p_value", "t_p_value", 
-                         paste0("resid_", years))
+    if (length(resids) == nlyr(gpp_rast)) {
+      
+      output <- c(yint, ppt_slope, t_slope, r_sq, ppt_p_value, t_p_value, resids)
+      
     } else {
-      output <- rep(NA, 25)
-      names(output) <- c("yint", "ppt_slope", "t_slope",
+      
+      output <- rep(NA, nlyr(gpp_rast) + 6)
+      
+    }
+    
+    names(output) <- c("yint", "ppt_slope", "t_slope",
                          "rsq", "ppt_p_value", "t_p_value", 
                          paste0("resid_", years))
-    }
     
     output
   }
