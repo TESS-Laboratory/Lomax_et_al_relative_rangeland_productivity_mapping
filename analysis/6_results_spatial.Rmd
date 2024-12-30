@@ -60,7 +60,6 @@ lgs_layers <- lgs_paths %>%
   map(rast)
 names(lgs_layers) <- lgs_k
 
-lgs_50 <- lgs_layers[["50"]]
 lgs_100 <- lgs_layers[["100"]]
 lgs_200 <- lgs_layers[["200"]]
 lgs_1000 <- lgs_layers[["1000"]]
@@ -124,19 +123,7 @@ rsq_rue <- 1 - (rss_gpp_rue / tss_gpp)
 
 # LGS
 
-# gt_weight <- 5
-# lte_weight <- 5 / 9
-# 
-# error_lgs <- actual_gpp_mean - lgs_1000$potential
-# 
-# weighted_abs_error_lgs <- ifel(error_lgs > 0,
-#                                error_lgs * gt_weight,
-#                                error_lgs * lte_weight) %>%
-#   abs()
-
 abs_error_lgs <- abs(actual_gpp_mean - lgs_1000$mean)
-
-# maew_lgs <- mean(values(weighted_abs_error_lgs), na.rm = T)
 
 mae_lgs <- mean(values(abs_error_lgs), na.rm = T)
 
@@ -147,15 +134,6 @@ rss_gpp_lgs <- (actual_gpp_mean - lgs_1000$mean) ^ 2 %>%
 rsq_lgs <- 1 - (rss_gpp_lgs / tss_gpp)
 
 # RPI
-
-# error_rpi <- actual_gpp_mean - potential_gpp_mean
-# 
-# weighted_abs_error_rpi <- ifel(error_rpi > 0,
-#                                error_rpi * gt_weight,
-#                                error_rpi * lte_weight) %>%
-#   abs()
-# 
-# maew_rpi <- mean(values(weighted_abs_error_rpi), na.rm = T)
 
 mae_rpi <- mean(values(abs(actual_gpp_mean - predicted_gpp_rpi)), na.rm = T)
 
@@ -169,9 +147,7 @@ rsq_rpi <- 1 - (rss_gpp_rpi / tss_gpp)
 
 
 
-Plot comparative maps of the results from the different
-methods, starting with those that allow spatial comparison of mean degradation
-or productivity.
+Plot comparative maps of the results from the different methods (Figure 4).
 
 ```{r spatial_comparison_maps}
 
@@ -317,10 +293,10 @@ tmap_save(rpi_mean_map,
 tmap_save(lgs_100_mean_map,
           here("results", "figures", "lgs_100_mean.png"),
           width = 12, height = 12, units = "cm", dpi = 250)
-# 
-# tmap_save(lgs_200_mean_map,
-#           here("results", "figures", "lgs_200_mean.png"),
-#           width = 12, height = 12, units = "cm", dpi = 250)
+
+tmap_save(lgs_200_mean_map,
+          here("results", "figures", "lgs_200_mean.png"),
+          width = 12, height = 12, units = "cm", dpi = 250)
 
 tmap_save(lgs_1000_mean_map,
           here("results", "figures", "lgs_1000_mean.png"),
@@ -417,8 +393,8 @@ tmap_save(zoom_lgs_1000,
 ```
 
 
-Can also plot the estimated potential GPP to get a clearer picture of the model
-underlying each method:
+Plot the estimated potential GPP to get a clearer picture of the model
+underlying each method (Supplementary Figure S2):
 
 ```{r potential_gpp_maps}
 
@@ -542,256 +518,15 @@ tmap_save(rpi_pgpp_map,
 tmap_save(lgs_100_pgpp_map,
           here("results", "figures", "lgs_100_pgpp.png"),
           width = 12, height = 12, units = "cm", dpi = 250)
-# 
-# tmap_save(lgs_200_mean_map,
-#           here("results", "figures", "lgs_200_mean.png"),
-#           width = 12, height = 12, units = "cm", dpi = 250)
+
+tmap_save(lgs_200_mean_map,
+          here("results", "figures", "lgs_200_mean.png"),
+          width = 12, height = 12, units = "cm", dpi = 250)
 
 tmap_save(lgs_1000_pgpp_map,
           here("results", "figures", "lgs_1000_pgpp.png"),
           width = 12, height = 12, units = "cm", dpi = 250)
 
-## The same maps zoomed in to a specific region
-
-zoom_raster_pgpp <- c(mean(rue_pred), potential_gpp_mean, lgs_100$potential, lgs_1000$potential)
-names(zoom_raster_pgpp) <- c("rue", "rpi", "lgs_100", "lgs_1000")
-
-zoom_raster_pgpp <- crop(zoom_raster_pgpp, zoom_box)
-
-zoom_rue_pgpp <- tm_shape(zoom_raster_pgpp$rue) + 
-  tm_raster(
-    col.scale = tm_scale_continuous(
-      limits = c(0, 5000),
-      values = "yl_gn",
-      outliers.trunc = c(T,T)
-    ),
-    col.legend = tm_legend(
-      show = FALSE
-    )
-  ) +
-  tm_shape(zoom_box) + tm_borders(col = "red", lwd = 2) +
-  tm_layout(asp = 3/4,
-            frame = FALSE) +
-  tm_scalebar()
-
-zoom_rpi_pgpp <- tm_shape(zoom_raster_pgpp$rpi) + 
-  tm_raster(
-    col.scale = tm_scale_continuous(
-      limits = c(0, 5000),
-      values = "yl_gn",
-      outliers.trunc = c(T,T)
-    ),
-    col.legend = tm_legend(
-      show = FALSE
-    )
-  ) +
-  tm_shape(zoom_box) + tm_borders(col = "red", lwd = 2) +
-  tm_layout(asp = 3/4,
-            frame = FALSE) +
-  tm_scalebar()
-
-zoom_lgs_100_pgpp <- tm_shape(zoom_raster_pgpp$lgs_100) + 
-  tm_raster(
-    col.scale = tm_scale_continuous(
-      limits = c(0, 5000),
-      values = "yl_gn",
-      outliers.trunc = c(T,T)
-    ),
-    col.legend = tm_legend(
-      show = FALSE
-    )
-  ) +
-  tm_shape(zoom_box) + tm_borders(col = "red", lwd = 2) +
-  tm_layout(asp = 3/4,
-            frame = FALSE) +
-  tm_scalebar()
-
-zoom_lgs_1000_pgpp <- tm_shape(zoom_raster_pgpp$lgs_1000) + 
-  tm_raster(
-    col.scale = tm_scale_continuous(
-      limits = c(0, 5000),
-      values = "yl_gn",
-      outliers.trunc = c(T,T)
-    ),
-    col.legend = tm_legend(
-      show = FALSE
-    )
-  ) +
-  tm_shape(zoom_box) + tm_borders(col = "red", lwd = 2) +
-  tm_layout(asp = 3/4,
-            frame = FALSE) +
-  tm_scalebar()
-
-tmap_save(zoom_rpi_pgpp,
-          here("results", "figures", "zoom_rpi_pgpp.png"),
-          width = 12, height = 12, units = "cm", dpi = 250)
-
-tmap_save(zoom_rue_pgpp,
-          here("results", "figures", "zoom_rue_pgpp.png"),
-          width = 12, height = 12, units = "cm", dpi = 250)
-
-tmap_save(zoom_lgs_100_pgpp,
-          here("results", "figures", "zoom_lgs_100_pgpp.png"),
-          width = 12, height = 12, units = "cm", dpi = 250)
-
-tmap_save(zoom_lgs_1000_pgpp,
-          here("results", "figures", "zoom_lgs_1000_pgpp.png"),
-          width = 12, height = 12, units = "cm", dpi = 250)
-
 ```
-
-
-
-
-A more intuitive map might be to plot the quantiles for each dataset, i.e.,
-which quantile does each fit into in terms of overall productivity. That is a
-scale-free metric.
-
-```{r comparison_maps_quantiles}
-
-rast_as_quantiles <- function(x, quantile_list) {
-  
-  x_values <- values(x)
-  quantiles <- quantile(x_values, quantile_list, na.rm = TRUE)
-  
-  quantile_values <- findInterval(x_values, quantiles)
-  
-  out <- quantile_values %>%
-    matrix(nrow = nrow(x), ncol = ncol(x), byrow = TRUE) %>%
-    rast(extent = ext(x), crs = crs(x))
-  
-  out
-}
-
-quantiles <- seq(0, 1, 0.01)
-
-rpi_quantile_rast <- rast_as_quantiles(rpi_mean, quantiles)
-rue_quantile_rast <- rast_as_quantiles(rue_mean, quantiles)
-lgs_quantile_rast <- rast_as_quantiles(lgs_100$lgs_ratio, quantiles)
-
-plot(rpi_quantile_rast)
-plot(rue_quantile_rast)
-plot(lgs_quantile_rast)
-
-# Plot quantile difference maps
-
-# Basemap elements
-fill <- tm_shape(ke_tz) +
-  tm_fill("grey95")
-
-borders <- tm_shape(ke_tz) +
-  tm_borders() +
-  tm_layout(frame = FALSE)
-
-rpi_rue_diff_map_q <- fill +
-  tm_shape(rpi_quantile_rast - rue_quantile_rast) +
-  tm_raster(
-    col.scale = tm_scale_continuous(
-      limits = c(-60, 60),
-      midpoint = 0,
-      values = "PuOr",
-      outliers.trunc = c(TRUE, TRUE)
-    ),
-    col.legend = tm_legend(
-      reverse = TRUE,
-      title = "RPI - RUE\n(quantiles)",
-      width = 10,
-      height = 30
-    )
-  ) +
-  borders
-
-rpi_lgs_diff_map_q <- fill +
-  tm_shape(rpi_quantile_rast - lgs_quantile_rast) +
-  tm_raster(
-    col.scale = tm_scale_continuous(
-      limits = c(-60, 60),
-      midpoint = 0,
-      values = "PuOr",
-      outliers.trunc = c(TRUE, TRUE)
-    ),
-    col.legend = tm_legend(
-      reverse = TRUE,
-      title = "RPI - LGS\n(quantiles)",
-      width = 10,
-      height = 30
-    )
-  ) +
-  borders
-
-rpi_rue_diff_map_q
-rpi_lgs_diff_map_q
-
-
-```
-
-
-We can also plot a sample of points from each method to explore the
-quantitative relationship between them.
-
-```{r spatial_comparison_plots}
-
-set.seed(999)
-mean_rpi_sample <- spatSample(rpi_mean, 2000, as.points = TRUE,
-                              na.rm = TRUE, exhaustive = TRUE)
-
-mean_rue_sample <- extract(rue_mean, mean_rpi_sample)
-
-mean_lgs_100_sample <- extract(lgs_100$lgs_ratio, mean_rpi_sample) %>%
-  rename(lgs_100 = lgs_ratio)
-mean_lgs_1000_sample <- extract(lgs_1000$lgs_ratio, mean_rpi_sample) %>%
-  rename(lgs_1000 = lgs_ratio)
-
-covariate_sample <- extract(covariates, mean_rpi_sample)
-
-spatial_comparison <- mean_rpi_sample %>%
-  st_as_sf() %>%
-  rename(mean_rpi = mean) %>%
-  bind_cols(mean_rue_sample) %>%
-  rename(mean_rue = mean) %>%
-  bind_cols(mean_lgs_100_sample) %>%
-  bind_cols(mean_lgs_1000_sample) %>%
-  bind_cols(covariate_sample) %>%
-  select(-starts_with("ID"))
-
-
-ggplot(spatial_comparison, aes(x = mean_rpi, y = mean_rue)) +
-  geom_point(size = 0.5) +
-  geom_smooth(method = "lm", se = FALSE) +
-  theme_bw()
-
-ggplot(spatial_comparison, aes(x = mean_rpi, y = lgs_1000)) +
-  geom_point(size = 0.5) +
-  geom_smooth(method = "lm", se = FALSE) +
-  theme_bw()
-
-spatial_comparison_valid <- drop_na(spatial_comparison)
-
-cor(spatial_comparison_valid$mean_rpi, spatial_comparison_valid$mean_rue)
-cor(spatial_comparison_valid$mean_rpi, spatial_comparison_valid$lgs_100)
-cor(spatial_comparison_valid$mean_rpi, spatial_comparison_valid$lgs_1000)
-
-# Results relative to mean precipitation
-spatial_comparison %>%
-  pivot_longer(1:4, names_to = "metric", values_to = "value") %>%
-  ggplot(aes(x = ppt_mean, y = value)) +
-  geom_point(size = 0.25) +
-  geom_smooth(method = "lm", se = F) +
-  facet_wrap(~metric, scales = "free") +
-  theme_bw() +
-  labs(x = "Mean annual\nprecipitation (mm)",
-       y = "Metric")
-
-spatial_comparison %>%
-  st_drop_geometry %>%
-  pivot_longer(1:4, names_to = "metric", values_to = "value") %>%
-  group_by(metric) %>%
-  drop_na() %>%
-  summarise(cor = cor(ppt_mean, value))
-
-
-```
-
-
 
 
