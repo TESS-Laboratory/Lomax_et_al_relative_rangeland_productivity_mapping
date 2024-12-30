@@ -31,7 +31,7 @@ library(tictoc)
 library(tmap)
 
 # # Parallelisation
-nc <- availableCores() / 4
+nc <- availableCores() / 2
 plan(multisession, workers = nc)
 
 ```
@@ -42,29 +42,19 @@ plan(multisession, workers = nc)
 ke_tz <- st_read(here("data", "raw", "vector", "kenya_tanzania.geojson"))
 
 # Sample point data
-sample_points_raw <- st_read(here("data", "raw", "vector", "coarseScaleSample.geojson"))
+sample_points_raw <- st_read(here("data", "raw", "vector", "rangelandSample.geojson"))
 
-twi <- read_csv(here("data", "processed", "csv", "twi_sample.csv"))
+twi <- read_csv(here("data", "processed", "csv", "twi_sample_rangeland.csv"))
 
 sample_points_ppt <- st_read(here("data", "raw", "vector", "pptDistributionSample.geojson"))
-
-# Precipitation distribution metrics
-
-ppt_distribution <- st_read(here("data", "raw", "vector", "pptDistributionSample.geojson")) %>%
-    dplyr::select(-c("id", "allRangelands", "grassland", "igbp", "shrubland", "trees", "geometry")) %>%
-    st_drop_geometry() %>%
-    pivot_longer(cols = !index, names_to = "colname", values_to = "value") %>%
-    separate_wider_delim(colname, "_", names = c("variable", "year")) %>%
-    mutate(year = as.numeric(year)) %>%
-    pivot_wider(names_from = "variable", values_from = "value")
 
 
 ```
 
 ```{r clean, include = FALSE}
 
-yearly_vars <- c("GPP", "precipitation", "tMean", "parMean", "potentialET",
-                 "meanPptDay", "intensity", "ugi")
+yearly_vars <- c("GPP", "precipitation", "pptIntensity", "pptMeanDay", "ugi",
+                 "tMean", "parMean", "potentialET")
 
 sample_points <- sample_points_raw %>%
   mutate(x = st_coordinates(geometry)[,1],
@@ -77,9 +67,7 @@ sample_points <- sample_points_raw %>%
   separate_wider_delim(var, "_", names = c("data", "year")) %>%
   pivot_wider(names_from = data, values_from = value) %>%
   mutate(year = as.numeric(year)) %>%
-  left_join(ppt_distribution, by = c("index", "year")) %>%
-  filter(GPP > 0) %>%
-  st_as_sf(coords = c("x", "y"), crs = 4326)
+  filter(GPP > 0)
 
 # Calculate derived and normalised variables
 # Convert landform to factor variable
@@ -87,8 +75,8 @@ sample_points_derived <- sample_points %>%
   group_by(index) %>%
   mutate(mean_ppt = mean(precipitation),
          ppt_anomaly = (precipitation - mean_ppt) / mean_ppt * 100,
-         mean_meanPptDay = mean(meanPptDay),
-         meanPptDay_anomaly = meanPptDay - mean_meanPptDay,
+         mean_pptMeanDay = mean(pptMeanDay),
+         pptMeanDay_anomaly = pptMeanDay - mean_pptMeanDay,
          landform = factor(landform)) %>%
   ungroup()
 
@@ -128,8 +116,8 @@ vars_to_retain <- c(
   # "precipitation",  # Exclude raw precipitation data
   "mean_ppt",
   "ppt_anomaly",
-  "meanPptDay_anomaly",
-  "intensity",
+  "pptMeanDay_anomaly",
+  "pptIntensity",
   "ugi",
   "slope",
   "distToRiver",
