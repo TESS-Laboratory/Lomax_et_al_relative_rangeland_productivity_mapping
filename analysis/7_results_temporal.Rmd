@@ -151,7 +151,8 @@ mae_rpi_anom <- mean(abs(gpp_error_rpi))
 best_mae <- which.min(c(mae_rue, mae_restrend, mae_rpi_anom))
 
 ```
-
+Generate figures of mean absolute error per grid cell for each method
+(Supplementary Figure S3).
 
 ```{r mae_figs}
 
@@ -316,9 +317,7 @@ best_rsq <- which.max(c(rue_rsq, restrend_rsq, rpi_rsq))
 
 ```
 
-
-
-Visualise R-squared:
+Generate figures of R-squred per grid cell for each method (Figure 5).
 
 ```{r r_sq_figs}
 indices <- c("RUE", "RESTREND", "RPI")
@@ -457,7 +456,8 @@ ggsave(
 
 ```
 
-Calculate and plot pixel-wise correlation between indices and annual precipitation.
+Calculate and plot pixel-wise correlation between indices and annual
+precipitation (Supplementary Figure S4).
 
 ```{r ppt_correlation_map}
 
@@ -629,79 +629,8 @@ area_best <- tibble(value = 1:3, method = c("RUE", "RESTREND", "RPI")) %>%
 ```
 
 
-
-Plot trends of three time-series methods.
-
-```{r ts_trend}
-
-# Basemaps
-
-fill <- tm_shape(ke_tz) +
-  tm_fill("grey95")
-
-borders <- tm_shape(ke_tz) +
-  tm_borders()
-
-map_layout <- tm_layout(
-  asp = 3/4,
-  frame = FALSE
-)
-
-# Theil-Sen maps
-
-create_ts_trend_map <- function(trend_raster, palette) {
-  quantiles <- quantile(values(trend_raster), c(0.01, 0.99), na.rm = T)
-  
-  tm_shape(trend_raster) +
-  tm_raster(
-    col.scale = tm_scale_continuous(
-      limits = quantiles,
-      midpoint = 0,
-      values = palette,
-      outliers.trunc = c(TRUE, TRUE)
-    ),
-    col.legend = tm_legend(
-      title = "Slope",
-      reverse = TRUE,
-      frame = TRUE
-    )
-  )
-}
-
-rue_ts_map <- fill +
-  create_ts_trend_map(rue_ts_trend[[1]], "PuOr") +
-  borders +
-  map_layout +
-  tm_title("b) RUE")
-
-rpi_ts_map <- fill +
-  create_ts_trend_map(rpi_ts_trend[[1]], "PuOr") +
-  borders +
-  map_layout +
-  tm_title("a) RPI")
-
-restrend_ts_map <- fill +
-  create_ts_trend_map(restrend_results[[1]], "PuOr") +
-  borders +
-  map_layout +
-  tm_title("c) RESTREND")
-
-
-tmap_save(rue_ts_map,
-          here("results", "figures", "rue_ts_map.png"),
-          width = 12, height = 12, units = "cm", dpi = 250)
-tmap_save(rpi_ts_map,
-          here("results", "figures", "rpi_ts_map.png"),
-          width = 12, height = 12, units = "cm", dpi = 250)
-tmap_save(restrend_ts_map,
-          here("results", "figures", "restrend_ts_map.png"),
-          width = 12, height = 12, units = "cm", dpi = 250)
-
-
-```
-
-
-
+Scatter plots of temporal trends from the three time-series methods
+(Supplementary Figure S5).
 
 ```{r trend_scatter_plots}
 
@@ -773,14 +702,14 @@ ggsave(here("results", "figures", "rpi_restrend_plot.png"), rpi_restrend_plot,
 
 ```
 
-
+Annual facets of RPI values (Figure 3).
 
 ```{r facet_maps_rpi}
 
 names(rpi_all) <- years
 
 rpi_annual_map <- fill +
-  tm_shape(rpi_all[[1:4]]) +
+  tm_shape(rpi_all[[2:19]]) +
   tm_raster(
     col.scale = tm_scale_continuous(
       limits = c(0.2, 1.2),
@@ -826,6 +755,7 @@ tmap_save(
 
 ```
 
+Calculate RPI autocorrelation to test whether inter-annual effects are important.
 
 ```{r rpi_autocorrelation}
 
@@ -855,3 +785,8 @@ calc_ac1 <- function(x) {
 
 rpi_ac1 <- app(rpi_all, calc_ac1)
 rpi_ac1_detrended <- app(rpi_detrended, calc_ac1)
+
+rpi_ac1_detrended
+
+```
+
