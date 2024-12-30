@@ -92,6 +92,9 @@ pas_large <- filter(pas_filtered, area >= set_units(2000, "km^2"))
 # names(ppt_all) <- paste0("precipitation_", years)
 # names(tMean_all) <- paste0("tMean_", years)
 
+static_covariates <- rast(here("data", "raw", "raster", "covariateMaps", "staticVars.tif"))
+elev <- rast(here("data", "raw", "raster", "covariateMaps", "dem.tif"))
+
 ```
 
 
@@ -248,8 +251,8 @@ rpi_mean_map <- fill +
     )
   ) +
   bb_map +
-  tm_layout(frame = FALSE) +
-  tm_title("a") +
+  tm_layout(frame = FALSE, asp = 4/3) +
+  # tm_title("a)") +
   borders
 
 rpi_trend_map <- fill +
@@ -266,8 +269,8 @@ rpi_trend_map <- fill +
     )
   ) +
   bb_map +
-  tm_layout(frame = FALSE) +
-  tm_title("d") +
+  tm_layout(frame = FALSE, asp = 4/3) +
+  # tm_title("d)") +
   borders
 
 rpi_class_map <- fill +
@@ -280,20 +283,19 @@ rpi_class_map <- fill +
       frame = FALSE,
       # orientation = "landscape",
       position = c("left", "top"),
-      bg.color = "red",
       height = 12
     )
   ) +
   bb_map +
-  tm_layout(frame = FALSE, legend.bg.color = "red") +
-  tm_title("g") +
+  tm_layout(frame = FALSE, asp = 4/3) +
+  # tm_title("g)") +
   borders
 
-tmap_save(rpi_mean_map, here("results", "figures", "rpi_mean_map.png"),
+tmap_save(rpi_mean_map, here("results", "figures", "rpi_mean_map2.png"),
           width = 12, height = 12, units = "cm", dpi = 300)
-tmap_save(rpi_trend_map, here("results", "figures", "rpi_trend_map.png"),
+tmap_save(rpi_trend_map, here("results", "figures", "rpi_trend_map2.png"),
           width = 12, height = 12, units = "cm", dpi = 300)
-tmap_save(rpi_class_map, here("results", "figures", "rpi_class_map.png"),
+tmap_save(rpi_class_map, here("results", "figures", "rpi_class_map2.png"),
           width = 12, height = 12, units = "cm", dpi = 300)
 
 ## Zoom-ins
@@ -331,7 +333,7 @@ for (i in 1:length(bb_list)) {
     ) +
     tm_layout(asp = 3/4,
             frame = FALSE) + 
-    tm_title(letters[1 + i]) +
+    # tm_title(paste0(letters[1 + i], ")")) +
     bb_border
   
   rpi_trend_bb <- fill_bb +
@@ -342,7 +344,7 @@ for (i in 1:length(bb_list)) {
     ) +
     tm_layout(asp = 3/4,
             frame = FALSE) +
-    tm_title(letters[4 + i]) +
+    # tm_title(paste0(letters[4 + i], ")")) +
     bb_border
   
   rpi_class_bb <- fill_bb +
@@ -353,26 +355,26 @@ for (i in 1:length(bb_list)) {
     ) +
     tm_layout(asp = 3/4,
             frame = FALSE) +
-    tm_title(letters[7 + i]) +
+    # tm_title(paste0(letters[7 + i], ")")) +
     bb_border
   
   map_list[[i+1]] <- list(rpi_mean_bb, rpi_trend_bb, rpi_class_bb)
   
   # tmap_save(
   #   rpi_mean_bb,
-  #   here("results", "figures", paste0("rpi_mean_bb", i, ".png")),
+  #   here("results", "figures", paste0("rpi_mean_bbx", i, ".png")),
   #   width = 10, height = 10, units = "cm", dpi = 300
   # )
   # 
   # tmap_save(
   #   rpi_trend_bb,
-  #   here("results", "figures", paste0("rpi_trend_bb", i, ".png")),
+  #   here("results", "figures", paste0("rpi_trend_bbx", i, ".png")),
   #   width = 10, height = 10, units = "cm", dpi = 300
   # )
   # 
   # tmap_save(
   #   rpi_class_bb,
-  #   here("results", "figures", paste0("rpi_class_bb", i, ".png")),
+  #   here("results", "figures", paste0("rpi_class_bbx", i, ".png")),
   #   width = 10, height = 10, units = "cm", dpi = 300
   # )
 }
@@ -381,8 +383,8 @@ tmap_list <- list_flatten(list_transpose(map_list))
 
 multi_panel_map <- tmap_arrange(tmap_list, ncol = 3, nrow = 3)
 
-tmap_save(multi_panel_map, here("results", "figures", "multi_panel_class_map.jpg"),
-          width = 24, height = 32, dpi = 300, units = "cm")
+tmap_save(multi_panel_map, here("results", "figures", "multi_panel_class_map2.jpg"),
+          width = 26, height = 32, dpi = 300, units = "cm")
 
 
 
@@ -425,6 +427,37 @@ rpi_mean_topo_map <- tm_shape(ke_tz, bbox = bb_topo) + tm_fill(fill = "grey95") 
   tm_borders(col = "black", lwd = 2)
 
 tmap_save(rpi_mean_topo_map, here("results", "figures", "rpi_mean_topo_map.png"),
+          width = 10, height = 10, units = "cm", dpi = 300)
+
+elev_bbox <- crop(elev, bb_topo)
+elev_s_a <- terrain(elev_bbox, v = c("slope", "aspect"), unit = "radians")
+hillshade <- shade(elev_s_a$slope, elev_s_a$aspect, angle = 315)
+
+elev_topo_map <- tm_shape(ke_tz, bbox = bb_topo) + tm_fill(fill = "grey95") +
+  tm_shape(elev_bbox) + 
+  tm_raster(
+      col.scale = tm_scale_continuous(values = "rainbow_bu_pk"),
+      col.legend = tm_legend(position = c("left", "bottom"), reverse = TRUE, bg.color = "white", title = "Elevation (m)"),
+      col.alpha = 0.5
+    ) +
+    tm_layout(frame = FALSE) +
+  tm_shape(bb_topo) +
+  tm_borders(col = "black", lwd = 2)
+
+hillshade_map <- tm_shape(ke_tz, bbox = bb_topo) + tm_fill(fill = "grey95") +
+  tm_shape(hillshade) + 
+  tm_raster(
+      col.scale = tm_scale_continuous(values = "-greys"),
+      col.legend = tm_legend(show = FALSE),
+      col.alpha = 0.5
+    ) +
+    tm_layout(frame = FALSE) +
+  tm_shape(bb_topo) +
+  tm_borders(col = "black", lwd = 2)
+
+tmap_save(elev_topo_map, here("results", "figures", "elev_topo_map.png"),
+          width = 12, height = 12, units = "cm", dpi = 300)
+tmap_save(hillshade_map, here("results", "figures", "hillshade_topo_map.png"),
           width = 10, height = 10, units = "cm", dpi = 300)
 
 ```
