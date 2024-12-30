@@ -366,7 +366,8 @@ write_rds(rf_tuned_spt, here("results", "rds", "rf_tuned_spt.rds"))
 
 ```
 
-Performance assessment of spatial and non-spatial models
+Performance assessment of spatial and non-spatial models, including code for
+Predicted vs. Observed GPP (Figure 2).
 
 ```{r performance}
 
@@ -424,7 +425,7 @@ ggsave(
 ```
 
 
-# Variable importance:
+Variable importance plot (Supplementary Figure S1):
 
 ```{r importance}
 
