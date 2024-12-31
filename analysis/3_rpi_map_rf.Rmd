@@ -146,8 +146,7 @@ clean_df <- function(df) {
 add_derived_variables <- function(df) {
   df_derived <- df %>%
     mutate(ppt_anomaly = precipitation / mean_ppt,
-           meanPptDay_anomaly = meanPptDay - mean(meanPptDay)) %>%
-    rename(sdii = intensity)
+           meanPptDay_anomaly = meanPptDay - mean(meanPptDay))
   
   df_derived
 }
@@ -246,31 +245,6 @@ for (i in years) {
 }
 
 
-
-```
-
-
-Apply to full study area to map annual RPI
-
-```{r rpi_map}
-
-# Load exported RPI annual rasters
-rpi_paths <- Sys.glob(here("data", "processed", "raster", "rpi", "rf_rpi_rast*.tif"))
-
-rpi_list <- map(rpi_paths, rast)
-
-rpi_rast <- map(rpi_list, function(r) {r$rpi}) %>%
-  rast()
-
-names(rpi_rast) <- years
-
-# Calculate mean and variance
-
-rpi_rast_mean <- mean(rpi_rast)
-rpi_rast_var <- app(rpi_rast, var, na.rm = T)
-
-writeRaster(rpi_rast_mean,
-            here("data", "processed", "raster", "rpi", "rpi_rast_mean.tif"))
 
 ```
 
