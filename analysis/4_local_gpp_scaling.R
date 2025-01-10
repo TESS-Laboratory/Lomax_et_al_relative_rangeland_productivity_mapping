@@ -1,13 +1,10 @@
 #' ---
 #' title: "Local GPP Scaling"
-#' output: html_notebook
 #' date: 2024-01-09
 #' author: "Guy Lomax"
-#' editor_options: 
-#'   chunk_output_type: console
 #' ---
 #' 
-#' This notebook implements a clustering algorithm using input geospatial layers
+#' This script implements a clustering algorithm using input geospatial layers
 #' to define similar "land capability classes" as defined by Prince et al. (2009)
 #' and developed by Noojipady et al. (2015) and Li et al. (2020). These references
 #' typically use remotely sensed NPP products or use NDVI as a proxy, and hence
@@ -25,11 +22,6 @@ library(here)
 
 # Analysis
 library(mlr3verse)
-library(tictoc)
-
-# Visualisation
-library(tmap)
-
 
 #' 
 #' 
@@ -38,9 +30,6 @@ library(tmap)
 #' as well as % tree cover, soil sand fraction and slope. This is to prevent the instability
 #' in LCCs that results if new classes are derived for each year in the dataset.
 #' 
-#' We conduct two analyses, using the following variables:
-#' - Mean annual precipitation, temperature, sand fraction, tree cover, slope, PAR and PET
-#' - The above variables plus mean values of precipitation intensity and timing variables
 #' 
 ## ----load-------------------------------------------------------------------------------------------------------------------------------------------------------------
 
@@ -125,54 +114,49 @@ combined_vars_df <- as.data.frame(combined_rast, xy = TRUE, na.rm = TRUE)
 #' 
 #' 
 ## ----clustering, eval = FALSE-----------------------------------------------------------------------------------------------------------------------------------------
-## 
-## # Set up mlr3 tasks
-## 
-## tsk_lgs <- sample_points_subset %>%
-##   select(-GPP) %>%
-##   st_drop_geometry() %>%
-##   group_by(index) %>%
-##   summarise(across(.cols = everything(), .fns = mean)) %>%
-##   ungroup() %>%
-##   select(-index) %>%
-##   as_task_clust()
-## 
-## # Function to implement k-means with specified k
-## fit_k_means <- function(k, task) {
-## 
-##   message("Finding clusters for k = ", k)
-## 
-##   # Set up learners
-##   lrn_km <- lrn("clust.kmeans",
-##                 predict_type = "partition",
-##                 centers = k,
-##                 algorithm = "Lloyd",
-##                 nstart = 5,
-##                 iter.max = 1000
-##   )
-## 
-##   # Preprocessing pipelines
-## 
-##   po_scale <- po("scale")
-## 
-##   ppl_km <- as_learner(po_scale %>>% lrn_km)
-## 
-##   # Save clustering learner
-##   message("Clustering complete")
-## 
-##   cluster_model <- ppl_km$train(task)
-## 
-## }
-## 
-## k_values <- c(100, 200, 1000)
-## 
-## tic()
-## set.seed(999)
-## cluster_learners <- map(k_values, fit_k_means, task = tsk_lgs)
-## toc()
-## 
-## pushoverr::pushover("Clustering done")
-## 
+
+# Set up mlr3 tasks
+
+tsk_lgs <- sample_points_subset %>%
+  select(-GPP) %>%
+  st_drop_geometry() %>%
+  group_by(index) %>%
+  summarise(across(.cols = everything(), .fns = mean)) %>%
+  ungroup() %>%
+  select(-index) %>%
+  as_task_clust()
+
+# Function to implement k-means with specified k
+fit_k_means <- function(k, task) {
+
+  message("Finding clusters for k = ", k)
+
+  # Set up learners
+  lrn_km <- lrn("clust.kmeans",
+                predict_type = "partition",
+                centers = k,
+                algorithm = "Lloyd",
+                nstart = 5,
+                iter.max = 1000
+  )
+
+  # Preprocessing pipelines
+
+  po_scale <- po("scale")
+
+  ppl_km <- as_learner(po_scale %>>% lrn_km)
+
+  # Save clustering learner
+  message("Clustering complete")
+
+  cluster_model <- ppl_km$train(task)
+
+}
+
+k_values <- c(100, 200, 1000)
+
+set.seed(999)
+cluster_learners <- map(k_values, fit_k_means, task = tsk_lgs)
 
 #' 
 #' 

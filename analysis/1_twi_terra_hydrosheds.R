@@ -1,12 +1,14 @@
-## Topographic Wetness Index from DEM
+## Calculates Topographic Wetness Index from DEM
 ## 20th March 2023
 ## Guy Lomax
 ## G.Lomax@exeter.ac.uk
 
+## NB: WhiteboxTools must be installed separately before running
+## https://www.whiteboxgeo.com/download-whiteboxtools/
+
 library(terra)
 library(sf)
 library(tidyverse)
-library(tmap)
 library(here)
 library(whitebox)
 library(raster)
@@ -47,7 +49,7 @@ wbt_fd8_flow_accumulation(
   dem = here("data", "processed", "raster", "hydroSHEDS", "hydroshedsDemReproj.tif"),
   output = here("data", "processed", "raster", "hydroSHEDS", "hydrosheds_fa_fd8.tif"),
   out_type = "specific contributing area",
-  threshold = 3000  # 
+  threshold = 3000
 )
 
 fa_fd8 <- raster(here("data", "processed", "raster", "hydroSHEDS", "hydrosheds_fa_fd8.tif"))

@@ -1,12 +1,7 @@
 #' ---
 #' title: "Quantile Regression of Rangeland Productivity - Quantile Regression Forests"
-#' output: html_notebook
 #' author: Guy Lomax
 #' date: 2023-06-19
-#' editor_options: 
-#'   markdown: 
-#'     wrap: 72
-#'   chunk_output_type: console
 #' ---
 #' 
 #' This script conducts quantile regression on rangeland productivity
@@ -25,10 +20,6 @@ library(mlr3verse)
 library(mlr3spatiotempcv)
 library(ranger)
 library(future)
-library(tictoc)
-
-# Visualisation
-library(tmap)
 
 # # Parallelisation
 nc <- 16
@@ -202,34 +193,27 @@ spt_feature_select <- fsi(
 # Identify optimal feature set for each resampling strategy and store
 # Time ~ 10-12 hours
 
-# set.seed(123)
-# 
-# tic()
-# progressr::with_progress(
-#   spt_feature_set <- fs_method$optimize(spt_feature_select)
-# )
-# toc()
-# # beep(3)
-# 
-# write_rds(spt_feature_select, here("results", "rds", "spt_feature_selector.rds"))
-# write_rds(spt_feature_set, here("results", "rds", "spt_features.rds"))
-# rm(spt_feature_select, spt_feature_set)
-# gc()
+set.seed(123)
+
+progressr::with_progress(
+  spt_feature_set <- fs_method$optimize(spt_feature_select)
+)
+
+write_rds(spt_feature_select, here("results", "rds", "spt_feature_selector.rds"))
+write_rds(spt_feature_set, here("results", "rds", "spt_features.rds"))
+rm(spt_feature_select, spt_feature_set)
+gc()
 # pushoverr::pushover("Feature selection complete")
 
 
 #' 
 #' # Hyper-parameter optimisation (model tuning)
 #' 
-#' Now we have identified relevant features (and, hopefully, excluded those
-#' with minimal predictive power), we can use that feature set to tune
-#' hyperparameters for a new set of models.
-#' 
-#' We create two new tasks, each with the variables selected from the
+#' We create a new task with the variables selected from the
 #' previous step. Then we define a new learner allowing for tuning of
 #' hyperparameters. Finally, we pass the learner and task to an auto-tuner
-#' object for each of the two CV methods. We use a random search to
-#' identify hyperparameters that give decent performance.
+#' object. We use a random search to identify hyperparameters that 
+#' give decent performance.
 #' 
 ## ----rf_tuning_prep, include = FALSE----------------------------------------------------------------------------------------------------------------------------------
 
@@ -285,9 +269,7 @@ at_spt <- auto_tuner(
 
 set.seed(789)
 
-tic()
 rf_tuned_spt <- at_spt$train(task_gpp_spt)
-toc()
 
 write_rds(rf_tuned_spt, here("results", "rds", "rf_tuned_spt.rds"))
 
@@ -355,20 +337,39 @@ importance_spt <- rf_tuned_spt$learner$importance()
 
 static_vars <- c("mean_ppt", "slope", "distToRiver", "landform", "twi", "sand", "wriTCFrac")
 
+var_labels <- c(
+  mean_ppt = "Mean annual precipitation",
+  tMean = "Mean annual temperature",
+  pptIntensity = "Precipitation intensity",
+  pptMeanDay_anomaly = "Anomaly in\nmean precipitation day",
+  parMean = "Mean PAR",
+  ppt_anomaly = "Annual precipitation anomaly",
+  potentialET = "Potential evapotranspiration",
+  ugi = "Unranked Gini index",
+  sand = "Soil sand fraction",
+  wriTCFrac = "Tree cover fraction",
+  slope = "Slope",
+  distToRiver = "Distance to river",
+  landform = "Landform",
+  twi = "Topographic Wetness Index"
+)
+
+var_labels_df <- data.frame(variable = names(var_labels), label = unname(var_labels))
+
 importance_spt_df <- tibble(variable = names(importance_spt),
                             importance = as.vector(importance_spt)) %>%
-  mutate(type = ifelse(variable %in% static_vars, "Static", "Dynamic"))
+  mutate(type = ifelse(variable %in% static_vars, "Static", "Dynamic")) %>%
+  left_join(var_labels_df)
 
 importance_plot <- ggplot(
   importance_spt_df,
-  aes(x = importance, y = reorder(variable, importance), colour = type)) +
+  aes(x = importance, y = reorder(label, importance), colour = type)) +
   geom_point(size = 6) +
   theme_bw() +
   scale_colour_manual(values = c("darkblue", "red")) +
   labs(x = "Variable importance", y = "Variable", colour = "Variable type") +
   theme(axis.title = element_text(size = 20),
         axis.text = element_text(size = 16),
-        legend.position = "bottom",
         legend.title = element_text(size = 20),
         legend.text = element_text(size = 16))
 

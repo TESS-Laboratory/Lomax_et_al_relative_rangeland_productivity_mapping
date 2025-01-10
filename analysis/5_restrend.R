@@ -1,11 +1,10 @@
 #' ---
 #' title: "RESTREND and RUE"
-#' output: html_notebook
 #' date: 2023-11-27
 #' author: "Guy Lomax"
 #' ---
 #' 
-#' This notebook calculates Rain Use Efficiency (RUE) (Le Houerou 1984) and
+#' This script calculates Rain Use Efficiency (RUE) (Le Houerou 1984) and
 #' Residual Trend analysis (RESTREND) (Evans & Geerken 2004; Burrell et al. 2019)
 #' residuals for all grid cells in the study area, as well as temporal trends in
 #' these values, and saves them to disk.
@@ -20,14 +19,8 @@ library(data.table)
 library(here)
 
 # Analysis
-library(tictoc)
 library(future)
 library(furrr)
-
-# Visualisation
-library(tmap)
-
-
 
 #' 
 #' 
@@ -47,7 +40,6 @@ dynamic_covariates_paths <- Sys.glob(here("data", "raw", "raster", "covariateMap
 years <- str_extract(dynamic_covariates_paths, "\\d\\d\\d\\d")
 dynamic_covariates <- map(dynamic_covariates_paths, rast)
 names(dynamic_covariates) <- years
-
 
 
 #' 
@@ -76,42 +68,40 @@ names(gpp) <- paste0("gpp_", years)
 #' 
 ## ----rue--------------------------------------------------------------------------------------------------------------------------------------------------------------
 
-# # Calculate simple rain use efficiency
-# 
-# rue <- gpp / precipitation
-# 
-# writeRaster(rue, here("data", "processed", "raster", "rue", "rue_all.tif"),
-#             overwrite = TRUE)
-# 
-# # Mean RUE
-# rue_mean = mean(rue)
-# names(rue_mean) <- "mean_rue"
-# 
-# # RUE Trend using Theil Sen regression slope
-# tic()
-# rue_trend <- app(rue, function(ts) {
-#   if (any(is.na(ts))) {
-#     rep(NA, 3)
-#   } else {
-#     year <- 1:19
-#     df <- data.frame(year = year, ts = ts)
-#     
-#     mod <- RobustLinearReg::theil_sen_regression(ts ~ year, data = df)
-#     
-#     slope <- coef(mod)[2]
-#     r_sq <- broom::glance(mod)$r.squared[1]
-#     p_value <- broom::tidy(mod)$p.value[2]
-#     
-#     c(slope, r_sq, p_value)
-#   }
-# })
-# toc()
-# 
-# names(rue_trend) <- c("rue_slope", "r_sq", "p_value")
-# 
-# # Write rasters to disk
-# writeRaster(rue_mean, here("data", "processed", "raster", "rue", "rue_mean.tif"), overwrite = TRUE)
-# writeRaster(rue_trend, here("data", "processed", "raster", "rue", "rue_trend.tif"), overwrite = TRUE)
+# Calculate simple rain use efficiency
+
+rue <- gpp / precipitation
+
+writeRaster(rue, here("data", "processed", "raster", "rue", "rue_all.tif"),
+            overwrite = TRUE)
+
+# Mean RUE
+rue_mean = mean(rue)
+names(rue_mean) <- "mean_rue"
+
+# RUE Trend using Theil Sen regression slope
+rue_trend <- app(rue, function(ts) {
+  if (any(is.na(ts))) {
+    rep(NA, 3)
+  } else {
+    year <- 1:19
+    df <- data.frame(year = year, ts = ts)
+
+    mod <- RobustLinearReg::theil_sen_regression(ts ~ year, data = df)
+
+    slope <- coef(mod)[2]
+    r_sq <- broom::glance(mod)$r.squared[1]
+    p_value <- broom::tidy(mod)$p.value[2]
+
+    c(slope, r_sq, p_value)
+  }
+})
+
+names(rue_trend) <- c("rue_slope", "r_sq", "p_value")
+
+# Write rasters to disk
+writeRaster(rue_mean, here("data", "processed", "raster", "rue", "rue_mean.tif"), overwrite = TRUE)
+writeRaster(rue_trend, here("data", "processed", "raster", "rue", "rue_trend.tif"), overwrite = TRUE)
 
 
 #' 
@@ -186,13 +176,11 @@ fit_restrend <- function(gpp_rast, ppt_rast, tMean_rast) {
   restrend_rast <- rast(restrend_df, crs = crs(gpp_rast), extent = ext(gpp_rast))
 }
 
-tictoc::tic()
 restrend_rast <- fit_restrend(gpp, precipitation, tMean)
-tictoc::toc()
 writeRaster(restrend_rast, here("data", "processed", "raster", "restrend", "restrend_resids.tif"),
             overwrite = TRUE)
 
-pushoverr::pushover("RESTREND residuals calculated")
+# pushoverr::pushover("RESTREND residuals calculated")
 
 # Calculate residual trend and save
 
@@ -218,9 +206,7 @@ calculate_trend <- function(x) {
   
 }
 
-tic()
 restrend_results <- app(restrend_rast[[7:25]], calculate_trend)
-toc()
 
 names(restrend_results) <- c("resid_slope", "resid_rsq", "resid_p_value")
 
@@ -228,6 +214,6 @@ writeRaster(restrend_results, here("data", "processed", "raster", "restrend_resu
             overwrite = TRUE)
 
 
-pushoverr::pushover("RESTREND analysis complete")
+# pushoverr::pushover("RESTREND analysis complete")
 
 #' 
