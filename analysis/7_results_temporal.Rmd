@@ -52,12 +52,10 @@ rpi_all <- rpi_paths %>%
 names(rpi_all) <- paste0("rpi_", 2000:2018)
 
 rpi_ts_trend <- rast(here("data", "processed", "raster", "rpi", "rf_rpi_ts_trend.tif"))
-rpi_kendall <- rast(here("data", "processed", "raster", "rpi", "rf_rpi_kendall_tau_rast.tif"))
 
 # RUE layers and trend
 rue_all <- rast(here("data", "processed", "raster", "rue", "rue_all.tif"))
 rue_ts_trend <- rast(here("data", "processed", "raster", "rue", "rue_trend.tif"))
-rue_kendall <- rast(here("data", "processed", "raster", "rue", "rue_trend_kendall.tif"))
 
 names(rue_all) <- paste0("rue_", 2000:2018)
 

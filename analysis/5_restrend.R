@@ -1,16 +1,16 @@
----
-title: "RESTREND and RUE"
-output: html_notebook
-date: 2023-11-27
-author: "Guy Lomax"
----
-
-This notebook calculates Rain Use Efficiency (RUE) (Le Houerou 1984) and
-Residual Trend analysis (RESTREND) (Evans & Geerken 2004; Burrell et al. 2019)
-residuals for all grid cells in the study area, as well as temporal trends in
-these values, and saves them to disk.
-
-```{r setup}
+#' ---
+#' title: "RESTREND and RUE"
+#' output: html_notebook
+#' date: 2023-11-27
+#' author: "Guy Lomax"
+#' ---
+#' 
+#' This notebook calculates Rain Use Efficiency (RUE) (Le Houerou 1984) and
+#' Residual Trend analysis (RESTREND) (Evans & Geerken 2004; Burrell et al. 2019)
+#' residuals for all grid cells in the study area, as well as temporal trends in
+#' these values, and saves them to disk.
+#' 
+## ----setup------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 # Data handling
 library(tidyverse)
@@ -28,12 +28,12 @@ library(furrr)
 library(tmap)
 
 
-```
 
-
-Read in data layers
-
-```{r load, include = FALSE}
+#' 
+#' 
+#' Read in data layers
+#' 
+## ----load, include = FALSE--------------------------------------------------------------------------------------------------------------------------------------------
 
 # Country boundaries
 ke_tz <- st_read(here("data", "raw", "vector", "kenya_tanzania.geojson"))
@@ -49,12 +49,12 @@ dynamic_covariates <- map(dynamic_covariates_paths, rast)
 names(dynamic_covariates) <- years
 
 
-```
 
-
-Data preparation
-
-```{r data_prep}
+#' 
+#' 
+#' Data preparation
+#' 
+## ----data_prep--------------------------------------------------------------------------------------------------------------------------------------------------------
 
 # Simplify dynamic covariates raster to only GPP and precipitation
 precipitation <- map(dynamic_covariates, function(r) r$precipitation) %>%
@@ -68,54 +68,56 @@ names(precipitation) <- paste0("precipitation_", years)
 names(tMean) <- paste0("tMean_", years)
 names(gpp) <- paste0("gpp_", years)
 
-```
+
+#' 
+#' 
+#' 
+#' Calculate RUE values and trend for all pixels
+#' 
+## ----rue--------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+# # Calculate simple rain use efficiency
+# 
+# rue <- gpp / precipitation
+# 
+# writeRaster(rue, here("data", "processed", "raster", "rue", "rue_all.tif"),
+#             overwrite = TRUE)
+# 
+# # Mean RUE
+# rue_mean = mean(rue)
+# names(rue_mean) <- "mean_rue"
+# 
+# # RUE Trend using Theil Sen regression slope
+# tic()
+# rue_trend <- app(rue, function(ts) {
+#   if (any(is.na(ts))) {
+#     rep(NA, 3)
+#   } else {
+#     year <- 1:19
+#     df <- data.frame(year = year, ts = ts)
+#     
+#     mod <- RobustLinearReg::theil_sen_regression(ts ~ year, data = df)
+#     
+#     slope <- coef(mod)[2]
+#     r_sq <- broom::glance(mod)$r.squared[1]
+#     p_value <- broom::tidy(mod)$p.value[2]
+#     
+#     c(slope, r_sq, p_value)
+#   }
+# })
+# toc()
+# 
+# names(rue_trend) <- c("rue_slope", "r_sq", "p_value")
+# 
+# # Write rasters to disk
+# writeRaster(rue_mean, here("data", "processed", "raster", "rue", "rue_mean.tif"), overwrite = TRUE)
+# writeRaster(rue_trend, here("data", "processed", "raster", "rue", "rue_trend.tif"), overwrite = TRUE)
 
 
-
-Calculate RUE values and trend for all pixels
-
-```{r rue}
-
-# Calculate simple rain use efficiency
-
-rue <- gpp / precipitation
-
-writeRaster(rue, here("data", "processed", "raster", "rue", "rue_all.tif"),
-            overwrite = TRUE)
-
-# Mean RUE
-rue_mean = mean(rue)
-names(rue_mean) <- "mean_rue"
-
-# RUE Trend using Theil Sen regression slope
-tic()
-rue_trend <- app(rue, function(ts) {
-  if (any(is.na(ts))) {
-    rep(NA, 3)
-  } else {
-    year <- 1:19
-    mod <- RobustLinearReg::theil_sen_regression(ts ~ year, data = df)
-    
-    slope <- coef(mod)[2]
-    r_sq <- broom::glance(mod)$r.squared[1]
-    p_value <- broom::tidy(mod)$p.value[2]
-    
-    c(slope, r_sq, p_value)
-  }
-})
-toc()
-
-names(rue_trend) <- c("rue_slope", "r_sq", "p_value")
-
-# Write rasters to disk
-writeRaster(rue_mean, here("data", "processed", "raster", "rue", "rue_mean.tif"), overwrite = TRUE)
-writeRaster(rue_trend, here("data", "processed", "raster", "rue", "rue_trend.tif"), overwrite = TRUE)
-
-```
-
-Calculate RESTREND residuals and residual trend for all pixels
-
-``` {r restrend}
+#' 
+#' Calculate RESTREND residuals and residual trend for all pixels
+#' 
+## ----restrend---------------------------------------------------------------------------------------------------------------------------------------------------------
 
 # Custom function to extract model params and residuals from linear models
 # fitted to the time series in each pixel
@@ -190,6 +192,8 @@ tictoc::toc()
 writeRaster(restrend_rast, here("data", "processed", "raster", "restrend", "restrend_resids.tif"),
             overwrite = TRUE)
 
+pushoverr::pushover("RESTREND residuals calculated")
+
 # Calculate residual trend and save
 
 restrend_rast <- rast(here("data", "processed", "raster", "restrend", "restrend_resids.tif"))
@@ -215,7 +219,7 @@ calculate_trend <- function(x) {
 }
 
 tic()
-restrend_results <- app(restrend_rast[[7:25]], calculate_trend, cores = 16)
+restrend_results <- app(restrend_rast[[7:25]], calculate_trend)
 toc()
 
 names(restrend_results) <- c("resid_slope", "resid_rsq", "resid_p_value")
@@ -223,5 +227,7 @@ names(restrend_results) <- c("resid_slope", "resid_rsq", "resid_p_value")
 writeRaster(restrend_results, here("data", "processed", "raster", "restrend_results.tif"),
             overwrite = TRUE)
 
-```
 
+pushoverr::pushover("RESTREND analysis complete")
+
+#' 

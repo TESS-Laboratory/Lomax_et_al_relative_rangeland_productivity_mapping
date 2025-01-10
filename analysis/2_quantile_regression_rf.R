@@ -1,19 +1,19 @@
----
-title: "Quantile Regression of Rangeland Productivity - Quantile Regression Forests"
-output: html_notebook
-author: Guy Lomax
-date: 2023-06-19
-editor_options: 
-  markdown: 
-    wrap: 72
-  chunk_output_type: console
----
-
-This Notebook conducts quantile regression on rangeland productivity
-data using Quantile Regression Forests (QRF), modelling annual gross
-primary productivity (GPP) as a function of environmental variables
-
-```{r setup, include = FALSE}
+#' ---
+#' title: "Quantile Regression of Rangeland Productivity - Quantile Regression Forests"
+#' output: html_notebook
+#' author: Guy Lomax
+#' date: 2023-06-19
+#' editor_options: 
+#'   markdown: 
+#'     wrap: 72
+#'   chunk_output_type: console
+#' ---
+#' 
+#' This script conducts quantile regression on rangeland productivity
+#' data using Quantile Regression Forests (QRF), modelling annual gross
+#' primary productivity (GPP) as a function of environmental variables
+#' 
+## ----setup, include = FALSE-------------------------------------------------------------------------------------------------------------------------------------------
 
 # Data handling
 library(tidyverse)
@@ -31,12 +31,12 @@ library(tictoc)
 library(tmap)
 
 # # Parallelisation
-nc <- availableCores() / 2
-plan(multisession, workers = nc)
+nc <- 16
+# plan(multicore, workers = nc)
 
-```
 
-```{r load, include = FALSE}
+#' 
+## ----load--------------------------------------------------------------------------------------------------------------------------------------------
 
 # Country boundaries
 ke_tz <- st_read(here("data", "raw", "vector", "kenya_tanzania.geojson"))
@@ -44,14 +44,15 @@ ke_tz <- st_read(here("data", "raw", "vector", "kenya_tanzania.geojson"))
 # Sample point data
 sample_points_raw <- st_read(here("data", "raw", "vector", "rangelandSample.geojson"))
 
-twi <- read_csv(here("data", "processed", "csv", "twi_sample_rangeland.csv"))
-
-sample_points_ppt <- st_read(here("data", "raw", "vector", "pptDistributionSample.geojson"))
+twi <- read_csv(here("data", "processed", "csv", "twi_sample.csv"))
 
 
-```
+#' 
+#' Prepare data and add derived variables:
+#' 
+## ----clean-------------------------------------------------------------------------------------------------------------------------------------------
 
-```{r clean, include = FALSE}
+message("Preparing data\n")
 
 yearly_vars <- c("GPP", "precipitation", "pptIntensity", "pptMeanDay", "ugi",
                  "tMean", "parMean", "potentialET")
@@ -80,37 +81,39 @@ sample_points_derived <- sample_points %>%
          landform = factor(landform)) %>%
   ungroup()
 
+# Save sample points data frame with all variables
+write_csv(sample_points_derived, here("data", "processed", "csv", "rangelandSample_processed.csv"))
 
-```
-
-# Data preparation for RF modelling
-
-We select variables to use for modelling, remove rows containing NA
-values (the TWI raster has some pixels with NA values) and convert to a
-spatiotemporal regression task. We assign point id ("id") as our index
-of spatial location and "year" as our index of time.
-
-We then choose our learner (random forest regression through the ranger
-package) with quantile regression enabled, and define two alternative
-resampling (cross- validation) strategies: random CV and
-"Leave-location-and-time-out" CV that ensures the validation set for
-each fold does not overlap in either time or space with the training
-set.
-
-When defining the learner, we initially choose crude, plausible
-hyperparameters of mtry.ratio = 0.5 and sample.fraction = 0.5. However,
-we set the initial minimum node size to 100 (around 0.05% of the dataset)
-to mitigate overfitting and to allow sufficient terminal node size that
-quantiles can be calculated. For our purposes, absolute predictive
-accuracy is less important than retaining enough variability in nodes to
-allow assessment of quantiles.
-
-```{r data_prep}
+#' 
+#' # Data preparation for RF modelling
+#' 
+#' We select variables to use for modelling, remove rows containing NA
+#' values (the TWI raster has some pixels with NA values) and convert to a
+#' spatiotemporal regression task. We assign point id ("id") as our index
+#' of spatial location and "year" as our index of time.
+#' 
+#' We then choose our learner (random forest regression through the ranger
+#' package) with quantile regression enabled, and define two alternative
+#' resampling (cross- validation) strategies: random CV and
+#' "Leave-location-and-time-out" CV that ensures the validation set for
+#' each fold does not overlap in either time or space with the training
+#' set.
+#' 
+#' When defining the learner, we initially choose crude, plausible
+#' hyperparameters of mtry.ratio = 0.5 and sample.fraction = 0.5. However,
+#' we set the initial minimum node size to 100 (around 0.05% of the dataset)
+#' to mitigate overfitting and to allow sufficient terminal node size that
+#' quantiles can be calculated. For our purposes, absolute predictive
+#' accuracy is less important than retaining enough variability in nodes to
+#' allow assessment of quantiles.
+#' 
+## ----data_prep--------------------------------------------------------------------------------------------------------------------------------------------------------
 
 # Create task
 
 vars_to_retain <- c(
   "index",
+  "x", "y",
   "year",
   "GPP",
   # "precipitation",  # Exclude raw precipitation data
@@ -138,6 +141,7 @@ task_gpp <- as_task_regr_st(
   x = sample_points_subset,
   id = "potential_gpp",
   target = "GPP",
+  coordinate_names = c("x", "y"),
   coords_as_features = FALSE,
   crs = "epsg:4326"
 )
@@ -158,23 +162,26 @@ lrn_ranger_untuned <- lrn("regr.ranger",
 # Create resampling strategy
 
 spt_cv_plan <- rsmp("sptcv_cstf", folds = 10)
+# nspt_cv_plan <- rsmp("cv", folds = 10)  # Non-spatiotemporal CV (not used in main analysis)
 
-```
 
-# Feature selection
+#' 
+#' # Feature selection
+#' 
+#' We use forward feature selection with the untuned model to identify
+#' which covariates have unique information to predict GPP. For this, we
+#' start by building all possible single-variable models. Then, selecting
+#' the variable that gives the best performance (lowest RMSE in this case),
+#' we build all possible two-variable models that include this variable. We
+#' do the same with a third variable, and so on, until the point at which
+#' adding an additional variable fails to improve model performance.
+#' 
+#' We do this separately for models using random CV and spatio-temporal CV,
+#' and save the optimum feature set for each.
+#' 
+## ----rf_feature_select, message = FALSE, results = FALSE, include = FALSE---------------------------------------------------------------------------------------------
 
-We use forward feature selection with the untuned model to identify
-which covariates have unique information to predict GPP. For this, we
-start by building all possible single-variable models. Then, selecting
-the variable that gives the best performance (lowest RMSE in this case),
-we build all possible two-variable models that include this variable. We
-do the same with a third variable, and so on, until the point at which
-adding an additional variable fails to improve model performance.
-
-We do this separately for models using random CV and spatio-temporal CV,
-and save the optimum feature set for each.
-
-```{r rf_feature_select, message = FALSE, results = FALSE, include = FALSE}
+message("Beginning feature selection\n")
 
 # Create forward feature selection with untuned model, minimising rmse
 
@@ -195,43 +202,48 @@ spt_feature_select <- fsi(
 # Identify optimal feature set for each resampling strategy and store
 # Time ~ 10-12 hours
 
-set.seed(123)
-
-tic()
-progressr::with_progress(
-  spt_feature_set <- fs_method$optimize(spt_feature_select)
-)
-toc()
-
-write_rds(spt_feature_select, here("results", "rds", "spt_feature_selector.rds"))
-write_rds(spt_feature_set, here("results", "rds", "spt_features.rds"))
-rm(spt_feature_select, spt_feature_set)
-gc()
+# set.seed(123)
+# 
+# tic()
+# progressr::with_progress(
+#   spt_feature_set <- fs_method$optimize(spt_feature_select)
+# )
+# toc()
+# # beep(3)
+# 
+# write_rds(spt_feature_select, here("results", "rds", "spt_feature_selector.rds"))
+# write_rds(spt_feature_set, here("results", "rds", "spt_features.rds"))
+# rm(spt_feature_select, spt_feature_set)
+# gc()
 # pushoverr::pushover("Feature selection complete")
 
-```
 
-# Hyper-parameter optimisation (model tuning)
+#' 
+#' # Hyper-parameter optimisation (model tuning)
+#' 
+#' Now we have identified relevant features (and, hopefully, excluded those
+#' with minimal predictive power), we can use that feature set to tune
+#' hyperparameters for a new set of models.
+#' 
+#' We create two new tasks, each with the variables selected from the
+#' previous step. Then we define a new learner allowing for tuning of
+#' hyperparameters. Finally, we pass the learner and task to an auto-tuner
+#' object for each of the two CV methods. We use a random search to
+#' identify hyperparameters that give decent performance.
+#' 
+## ----rf_tuning_prep, include = FALSE----------------------------------------------------------------------------------------------------------------------------------
 
-Now we have identified relevant features (and, hopefully, excluded those
-with minimal predictive power), we can use that feature set to tune
-hyperparameters for a new set of models.
+message("Beginning hyperparameter tuning\n")
 
-We create a new task with the variables selected from the
-previous step. Then we define a new learner allowing for tuning of
-hyperparameters. Finally, we pass the learner and task to an auto-tuner
-object. We use a random search to identify hyperparameters that give decent
-performance.
+# Load feature set and compare best performance
 
-```{r rf_tuning_prep, include = FALSE}
-
-# Load feature sets and compare best performance
 spt_feature_set <- read_rds(here("results", "rds", "spt_features.rds"))
+
 spt_feature_select <- read_rds(here("results", "rds", "spt_feature_selector.rds"))
 
 spt_feature_set
 
-# Create new tasks using features selected above
+# Create new task using features selected above
 task_gpp_spt <- task_gpp$clone()
 task_gpp_spt$select(unlist(spt_feature_set$features))
 
@@ -265,13 +277,10 @@ at_spt <- auto_tuner(
   term_evals = 25
 )
 
-
-
-```
-
-
-
-```{r rf_tuning, include=FALSE}
+#' 
+#' 
+#' 
+## ----rf_tuning, include=FALSE-----------------------------------------------------------------------------------------------------------------------------------------
 # Spatial model
 
 set.seed(789)
@@ -282,18 +291,11 @@ toc()
 
 write_rds(rf_tuned_spt, here("results", "rds", "rf_tuned_spt.rds"))
 
-# pushoverr::pushover("Hyperparameter tuning complete")
-
-rm(rf_tuned_spt)
-gc()
-
-
-```
-
-Performance assessment of spatial and non-spatial models, including code for
-Predicted vs. Observed GPP (Figure 2).
-
-```{r performance}
+#' 
+#' Performance assessment of spatial and non-spatial models, including code for
+#' Predicted vs. Observed GPP (Figure 2).
+#' 
+## ----performance------------------------------------------------------------------------------------------------------------------------------------------------------
 
 rf_tuned_spt <- read_rds(here("results", "rds", "rf_tuned_spt.rds"))
 
@@ -313,6 +315,7 @@ data_with_quantiles_spt <- task_gpp_spt$data() %>%
   mutate(quantile_pred = quantile_pred / 1000,
          GPP = GPP / 1000)
 
+#' Performance plot (Figure 2(b))
 density_breaks <- c(1, 10, 100, 1000, 10000)
 
 density_plot <- ggplot(data_with_quantiles_spt, aes(x = quantile_pred, y = GPP)) +
@@ -334,17 +337,17 @@ density_plot <- ggplot(data_with_quantiles_spt, aes(x = quantile_pred, y = GPP))
        fill = "Number of points")
 
 ggsave(
-  here("results", "figures", "rf_density_plot2.png"),
+  here("results", "figures", "rf_density_plot.png"),
   density_plot,
   width = 24, height = 24, units = "cm", dpi = 250
 )
 
-```
 
-
-Variable importance plot (Supplementary Figure S1):
-
-```{r importance}
+#' 
+#' 
+#' Variable importance plot (Figure 2(a)):
+#' 
+## ----importance-------------------------------------------------------------------------------------------------------------------------------------------------------
 
 # Variable importance
 
@@ -365,11 +368,14 @@ importance_plot <- ggplot(
   labs(x = "Variable importance", y = "Variable", colour = "Variable type") +
   theme(axis.title = element_text(size = 20),
         axis.text = element_text(size = 16),
+        legend.position = "bottom",
         legend.title = element_text(size = 20),
         legend.text = element_text(size = 16))
+
+ggsave(here("results", "figures", "importance_plot.png"),
+       importance_plot,
+       width = 20, height = 20, units = "cm", dpi = 250)
   
 
-
-```
-
-
+#' 
+#' 
