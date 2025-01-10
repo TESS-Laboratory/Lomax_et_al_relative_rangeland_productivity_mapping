@@ -593,12 +593,12 @@ tmap_save(
 # Density plot of correlations for each method
 
 ppt_cor_hist <- ppt_cor_all %>%
-  mutate(method = factor(method, levels = c("rue", "rpi", "restrend_resids"))) %>%
+  mutate(method = factor(method, levels = c("rue", "restrend_resids", "rpi"))) %>%
   ggplot(aes(x = ppt_cor, fill = method)) +
   geom_density(position = "identity", alpha = 0.6, colour = "grey30") +
   geom_vline(xintercept = 0) +
   theme_minimal() +
-  scale_fill_manual(values = c("#C68039", "#39C680", "#8039C6"),
+  scale_fill_manual(values = c("#C68039", "#8039C6", "#39C680"),
                     labels = c("RUE", "RESTREND", "RPI")) +
   theme(title = element_text(size = 16),
         axis.title = element_text(size = 20),
@@ -708,11 +708,17 @@ Annual facets of RPI values (Figure 3).
 
 names(rpi_all) <- years
 
+fill <- tm_shape(ke_tz) + 
+  tm_fill("grey95")
+
+borders <- tm_shape(ke_tz) +
+  tm_borders()
+
 rpi_annual_map <- fill +
   tm_shape(rpi_all[[2:19]]) +
   tm_raster(
     col.scale = tm_scale_continuous(
-      limits = c(0.2, 1.2),
+      limits = c(0.2, 1),
       values = "viridis",
       outliers.trunc = c(TRUE, TRUE)
     ),
@@ -722,13 +728,13 @@ rpi_annual_map <- fill +
   tm_layout(asp = 3/4, frame = FALSE,
             panel.label.bg.color = "white",
             panel.label.size = 10,
-            panel.label.border.color = "white") +
-  tm_facets_wrap(nrows = 2, ncols = 2)
+            panel.label.frame = FALSE) +
+  tm_facets_wrap(nrow = 3, ncol = 6)
 
 rpi_map_legend <- tm_shape(rpi_all[[2]]) +
   tm_raster(
     col.scale = tm_scale_continuous(
-      limits = c(0.2, 1.2),
+      limits = c(0.2, 1),
       values = "viridis",
       values.range = c(0,1),
       outliers.trunc = c(TRUE, TRUE)
