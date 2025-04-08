@@ -2,9 +2,11 @@
 
 This repository contains R and Google Earth Engine code for the analysis in Lomax, G. A., Powell, T. W. R., Lenton, T. M., and Cunliffe, A. M. (submitted), The Relative Productivity Index: Mapping human impacts on rangeland vegetation productivity with quantile regression forests monitor land degradation in East Africa using remote sensing.
 
-Preprint DOI: [10.2139/ssrn.5055722](http://dx.doi.org/10.2139/ssrn.5055722)
+Paper DOI: [10.1016/j.ecolind.2025.113208](https://doi.org/10.1016/j.ecolind.2025.113208).
 
 Repository DOI: [![DOI](https://zenodo.org/badge/724703367.svg)](https://doi.org/10.5281/zenodo.13987665)
+
+Data products freely available at: http://dx.doi.org/10.5281/zenodo.14990116.
 
 Contact: G.Lomax@exeter.ac.uk
 
