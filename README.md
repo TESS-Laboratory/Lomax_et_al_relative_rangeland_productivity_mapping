@@ -1,8 +1,6 @@
 # The Relative Productivity Index: Mapping human impacts on rangeland vegetation productivity with quantile regression forests
 
-This repository contains R and Google Earth Engine code for the analysis in Lomax, G. A., Powell, T. W. R., Lenton, T. M., and Cunliffe, A. M. (submitted), The Relative Productivity Index: Mapping human impacts on rangeland vegetation productivity with quantile regression forests monitor land degradation in East Africa using remote sensing.
-
-Paper DOI: [10.1016/j.ecolind.2025.113208](https://doi.org/10.1016/j.ecolind.2025.113208).
+This repository contains R and Google Earth Engine code for the analysis in Lomax, Guy A., Thomas W.R. Powell, Timothy M. Lenton, and Andrew M. Cunliffe. ‘The Relative Productivity Index: Mapping Human Impacts on Rangeland Vegetation Productivity with Quantile Regression Forests’. Ecological Indicators 171 (February 2025): 113208. https://doi.org/10.1016/j.ecolind.2025.113208.
 
 Repository DOI: [![DOI](https://zenodo.org/badge/724703367.svg)](https://doi.org/10.5281/zenodo.13987665)
 
