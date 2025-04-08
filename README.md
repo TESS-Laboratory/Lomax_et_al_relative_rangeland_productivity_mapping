@@ -6,7 +6,7 @@ Paper DOI: [10.1016/j.ecolind.2025.113208](https://doi.org/10.1016/j.ecolind.202
 
 Repository DOI: [![DOI](https://zenodo.org/badge/724703367.svg)](https://doi.org/10.5281/zenodo.13987665)
 
-Data products freely available at: http://dx.doi.org/10.5281/zenodo.14990116.
+RPI rasters and other data products freely available at: http://dx.doi.org/10.5281/zenodo.14990116.
 
 Contact: G.Lomax@exeter.ac.uk
 
